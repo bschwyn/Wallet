@@ -3,8 +3,8 @@ import argparse
 import main
 from main import TurtleWallet
 
-def add_wallet(name):
-    main.add_wallet(name)
+def new_wallet(name):
+    main.new_wallet(name)
 
 def access_wallet(name):
     main.access_wallet(name)
@@ -26,7 +26,7 @@ if args.wallet:
         create_new = input()
         if create_new == 'yes':
             print(f"creating wallet with name {name}")
-            add_wallet(name)
+            new_wallet(name)
             break
         elif create_new == 'no':
             pass
@@ -35,7 +35,8 @@ if args.wallet:
     #add address
     # do you want to create a new address?
     wallet = access_wallet(name)
-    wallet.list_addressses() # lists public addresses
+    print("wallet created")
+    #wallet.list_addressses() # lists public addresses
     print("Do you want to create a new address")
     while True:
         print("type 'yes' or 'no':")

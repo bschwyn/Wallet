@@ -223,6 +223,12 @@ class TurtleWallet:
         address = hashed_key[-20:] #last 20 digits
         return address
 
+    def list_addresses(self):
+        #get master public address
+        # does it make sense to store the tree shape but not the values?
+        #addressess are created in order, with a max number of children for each row
+
+
     def generate_address_from_private_key(self, private_key):
         public_key = self.generate_public_key_from_private_key(int(private_key,16))
         address = self.generate_address(public_key)
@@ -338,7 +344,7 @@ class TurtleWallet:
         print(receipt)
 
 
-def add_wallet(name):
+def new_wallet(name):
     new_wallet = TurtleWallet(name)
     entropy = new_wallet.generate_entropy(128)
     mnemonic_words = new_wallet.mnemonic_words(entropy)
