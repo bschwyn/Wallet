@@ -84,7 +84,9 @@ class TestStringMethods(unittest.TestCase):
                                                                                   "private main")
 """
 
-class TestNetworksAndTransactions(unittest.TestCase):
+# would be cool to have something to turn these tests on and off
+
+#class TestNetworksAndTransactions(unittest.TestCase):
     # def test_Frog(self):
     #     frog = FrogWallet()
     #     # connection, chain_id = connect("kovan")
@@ -105,20 +107,20 @@ class TestNetworksAndTransactions(unittest.TestCase):
     #     # balance of source after transaction
     #     print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
 
-
-    def test_ganache(self):
-
-        print('hello')
-        from_address = "0xf67643d49Ea9d68413D8d74717Da09E235b7D01d"
-        private_key = '6e82f0bf30100c06597ccb7edab90c8c8a02d03c80883466dfc97e5cb8b6cd4a'
-        wallet = FrogWallet(from_address, private_key, "ganache")
-
-        # send transaction
-        tx_hash = wallet.send_transaction(to_address="0x2C3658828031133dfDE4e7daEE709ed2709fCaB1",
-                                          value=w3.toWei(1, "ether"))
-        wallet.wait_for_transaction(tx_hash)
-
-        #verify through ganache gui
+    #
+    # def test_ganache(self):
+    #
+    #     print('hello')
+    #     from_address = "0xf67643d49Ea9d68413D8d74717Da09E235b7D01d"
+    #     private_key = '6e82f0bf30100c06597ccb7edab90c8c8a02d03c80883466dfc97e5cb8b6cd4a'
+    #     wallet = FrogWallet(from_address, private_key, "ganache")
+    #
+    #     # send transaction
+    #     tx_hash = wallet.send_transaction(to_address="0x2C3658828031133dfDE4e7daEE709ed2709fCaB1",
+    #                                       value=w3.toWei(1, "ether"))
+    #     wallet.wait_for_transaction(tx_hash)
+    #
+    #     #verify through ganache gui
 
 
 

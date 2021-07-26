@@ -6,7 +6,7 @@ from main import TurtleWallet
 def add_wallet(name):
     main.add_wallet(name)
 
-def access_wallet():
+def access_wallet(name):
     main.access_wallet(name)
     pass
 "python cli.py --wallet"
