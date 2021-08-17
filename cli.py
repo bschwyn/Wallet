@@ -9,6 +9,8 @@ def new_wallet(name):
 def access_wallet(name):
     main.access_wallet(name)
     pass
+
+
 "python cli.py --wallet"
 
 
@@ -19,22 +21,24 @@ args = parser.parse_args()
 if args.wallet:
     print("Enter wallet name:")
     name = input()
-    # check if wallet exists: #TODO
-    print(f"A wallet with that name does not exist. Do you wish to create one?")
-    while True:
-        print("type 'yes' or 'no':")
-        create_new = input()
-        if create_new == 'yes':
-            print(f"creating wallet with name {name}")
-            new_wallet(name)
-            break
-        elif create_new == 'no':
-            pass
-        #else repeat loop
+    wallet = access_wallet(name)
+    if not wallet:
+        print(f"A wallet with that name does not exist. Do you wish to create one?")
+        while True:
+            print("type 'yes' or 'no':")
+            create_new = input()
+            if create_new == 'yes':
+                print(f"creating wallet with name {name}")
+                new_wallet(name)
+                wallet = access_wallet(name)
+                break
+            elif create_new == 'no':
+                pass
+                #stop the program?
+
     #now do stuff with wallet?
     #add address
     # do you want to create a new address?
-    wallet = access_wallet(name)
     print("wallet created")
     #wallet.list_addressses() # lists public addresses
     print("Do you want to create a new address")

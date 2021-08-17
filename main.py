@@ -381,7 +381,7 @@ def access_wallet_json(name):
         if name == json_wallet['name']:
             #found
             return json_wallet
-    return []
+    return None
 
 def access_wallet(name):
     #get wallet from json
