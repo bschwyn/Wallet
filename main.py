@@ -227,6 +227,7 @@ class TurtleWallet:
         #get master public address
         # does it make sense to store the tree shape but not the values?
         #addressess are created in order, with a max number of children for each row
+        pass
 
 
     def generate_address_from_private_key(self, private_key):
@@ -364,18 +365,20 @@ def new_wallet(name):
     wallet_info = {"name": name, "info": {"master_private_key": private_key, "master_public_key": public_key, "children": 1}}
     # serialize
     #save to json file
-    print(wallet_info)
+
+    with open('data.json', 'w') as f:
+        json.dump(wallet_info, f)
 
 def access_wallet_json(name):
     # search json
     data = []
-    with open('data.txt') as f:
+    with open('data.json') as f:
         for line in f:
             data.append(json.loads(line))
     #search data
-    for line in data:
-        json_wallet = json.loads(line)
-        if name == json_wallet[name]:
+    for json_wallet in data:
+        #json_wallet = json.loads(line)
+        if name == json_wallet['name']:
             #found
             return json_wallet
     return []

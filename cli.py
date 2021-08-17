@@ -19,7 +19,7 @@ args = parser.parse_args()
 if args.wallet:
     print("Enter wallet name:")
     name = input()
-    # check if wallet exists:
+    # check if wallet exists: #TODO
     print(f"A wallet with that name does not exist. Do you wish to create one?")
     while True:
         print("type 'yes' or 'no':")
