@@ -1,14 +1,13 @@
 import argparse
-
 import main
+import sys
 from main import TurtleWallet
 
 def new_wallet(name):
     main.new_wallet(name)
 
 def access_wallet(name):
-    main.access_wallet(name)
-    pass
+    return main.access_wallet(name)
 
 
 "python cli.py --wallet"
@@ -22,6 +21,7 @@ if args.wallet:
     print("Enter wallet name:")
     name = input()
     wallet = access_wallet(name)
+    print("wallet", wallet)
     if not wallet:
         print(f"A wallet with that name does not exist. Do you wish to create one?")
         while True:
@@ -33,13 +33,14 @@ if args.wallet:
                 wallet = access_wallet(name)
                 break
             elif create_new == 'no':
-                pass
-                #stop the program?
+                sys.exit()
 
     #now do stuff with wallet?
     #add address
     # do you want to create a new address?
     print("wallet created")
+    sys.exit() #until I fix / implement the next part
+
     #wallet.list_addressses() # lists public addresses
     print("Do you want to create a new address")
     while True:
