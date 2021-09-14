@@ -64,6 +64,26 @@ class TestStringMethods(unittest.TestCase):
         extended, extended_key_b58_actual = a.extended_master_private_key(private_key, chain_code, 'private main')
         print(extended_key_b58_actual)
         print(extended)
+
+    def test_transaction(self):
+        pass
+        wallet = TurtleWallet("contains_test_eth") #I generated these mnemonic words with the wallet generator, but I don't think
+        # that means that this would necessarily be the same (as...)
+        words = "knife evoke duty acoustic artefact tumble bring diary valid couch motor gloom"
+        private_key, public_key, chain_code = wallet.generate_master_keys_and_codes(words)
+
+        # balance of source before transaction
+        print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
+        print(f"transaction count: {connection.eth.getTransactionCount(from_address)}")
+        #
+        # send transaction
+        tx_hash = wallet.send_transaction(to_address="0x461254d3C61d1Af7DE6EBfF99f0e0D1040Aa9d8a", value=w3.toWei(1, "ether"))
+        wallet.wait_for_transaction(tx_hash)
+
+             # balance of source after transaction
+             print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
+
+
 """
     def test_master_private_key(self):
         a = TurtleWallet('test')
@@ -86,26 +106,26 @@ class TestStringMethods(unittest.TestCase):
 
 # would be cool to have something to turn these tests on and off
 
-#class TestNetworksAndTransactions(unittest.TestCase):
-    # def test_Frog(self):
-    #     frog = FrogWallet()
-    #     # connection, chain_id = connect("kovan")
-    #     connection, chain_id = frog.connect("ropsten")
-    #     from_address = "0x029f7dd8f79fC19252Cb0cEb9c2021C727ae7074"
-    #     private_key = '6016f5822a0ea8f33a5e44444121e0e38c0d0748dc3188eba2ba301ac9978973'
-    #     wallet = FrogWallet(from_address, private_key)
-    #
-    #     # balance of source before transaction
-    #     print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
-    #     print(f"transaction count: {connection.eth.getTransactionCount(from_address)}")
-    #
-    #     # send transaction
-    #     tx_hash = wallet.send_transaction(to_address="0x461254d3C61d1Af7DE6EBfF99f0e0D1040Aa9d8a",
-    #                                       value=w3.toWei(1, "ether"))
-    #     wallet.wait_for_transaction(tx_hash)
-    #
-    #     # balance of source after transaction
-    #     print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
+# class TestNetworksAndTransactions(unittest.TestCase):
+#     def test_Frog(self):
+#         frog = FrogWallet()
+#         # connection, chain_id = connect("kovan")
+#         connection, chain_id = frog.connect("ropsten")
+#         from_address = "0x029f7dd8f79fC19252Cb0cEb9c2021C727ae7074"
+#         private_key = '6016f5822a0ea8f33a5e44444121e0e38c0d0748dc3188eba2ba301ac9978973'
+#         wallet = FrogWallet(from_address, private_key)
+#
+#         # balance of source before transaction
+#         print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
+#         print(f"transaction count: {connection.eth.getTransactionCount(from_address)}")
+#
+#         # send transaction
+#         tx_hash = wallet.send_transaction(to_address="0x461254d3C61d1Af7DE6EBfF99f0e0D1040Aa9d8a",
+#                                           value=w3.toWei(1, "ether"))
+#         wallet.wait_for_transaction(tx_hash)
+#
+#         # balance of source after transaction
+#         print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
 
     #
     # def test_ganache(self):

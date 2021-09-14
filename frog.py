@@ -111,3 +111,27 @@ class NewtWallet:
         k.update(bytes(public_key_string, 'utf-8'))
         hashed_key = k.hexdigest()
         self.address = hashed_key[-20:]
+
+def test_Frog():
+    # connection, chain_id = connect("kovan")
+    connection, chain_id = connect("ropsten")
+
+    from_address = "0x029f7dd8f79fC19252Cb0cEb9c2021C727ae7074"
+    private_key = '6016f5822a0ea8f33a5e44444121e0e38c0d0748dc3188eba2ba301ac9978973'
+    frog = FrogWallet(from_address, private_key, "ropsten")
+
+
+    # balance of source before transaction
+    print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
+    print(f"transaction count: {connection.eth.getTransactionCount(from_address)}")
+
+    # send transaction
+    tx_hash = frog.send_transaction(to_address="0x461254d3C61d1Af7DE6EBfF99f0e0D1040Aa9d8a",
+                                          value=w3.toWei(1, "ether"))
+    frog.wait_for_transaction(tx_hash)
+
+    # balance of source after transaction
+    print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
+
+
+test_Frog()

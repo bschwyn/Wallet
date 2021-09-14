@@ -96,6 +96,7 @@ from Crypto.Hash import keccak
 from web3 import Web3
 from web3.auto.infura import w3
 #from frog import NewtWallet
+import frog
 from elliptic import EllipticCurveMath
 
 class TurtleWallet:
@@ -106,14 +107,29 @@ class TurtleWallet:
     chldren, and each child can have many children. While new keys could be constructed off of the grandchildren of the
     root, this implementation only makes new children. It also does not list the master address, it when list addresses
     is called, all of the indexed children of the master are returned.
-
-
     """
 
     def __init__(self, name):
         self.wallet_name = name
         self.entropy_len = 128 ### needs to be set more appropriately later
         pass
+
+    def connect(network):
+        if network == "kovan":
+            infura_kovan_url = "https://kovan.infura.io/v3/afc8c9407f364433880c670ec94b3534"
+            web3 = Web3(Web3.HTTPProvider(infura_kovan_url))
+            chain_id = 42
+            print("connected to kovan network:", web3.isConnected())
+        elif network == "ropsten":
+            infura_ropsten_url = "https://ropsten.infura.io/v3/afc8c9407f364433880c670ec94b3534"
+            web3 = Web3(Web3.HTTPProvider(infura_ropsten_url))
+            chain_id = 3
+            print("connected to ropsten network:", web3.isConnected())
+        elif network == "ganache":
+            ganache_url = "http://localhost:7545"
+            web3 = Web3(Web3.HTTPProvider(ganache_url))
+            chain_id = 1337
+        return web3, chain_id
 
     @classmethod
     def build_wallet(cls, dictionary):
@@ -353,9 +369,9 @@ def new_wallet(name):
     print("If you lose them, you may not be able to recover the wallet and associated funds")
     print("mnemonic_words: ", mnemonic_words)
     while True:
-        print("Press 'y' to continue")
+        print("type 'yes' to continue")
         continue_ = input()
-        if continue_ == "y":
+        if continue_ == "yes":
             break
     seed = new_wallet.mnemonic_to_seed(mnemonic_words)
     private_key, public_key, chain_code = new_wallet.generate_master_keys_and_codes(seed)
@@ -365,58 +381,39 @@ def new_wallet(name):
     wallet_info = {"name": name, "info": {"master_private_key": private_key, "master_public_key": public_key, "children": 1}}
     # serialize
     #save to json file
-
-    with open('data.json', 'w') as f:
+    with open('data.txt', 'a') as f:
         json.dump(wallet_info, f)
+        f.write('\n')
 
 def access_wallet_json(name):
     # search json
     data = []
-    with open('data.json') as f:
+    with open('data.txt') as f:
         for line in f:
             data.append(json.loads(line))
     #search data
     for json_wallet in data:
-        #json_wallet = json.loads(line)
         if name == json_wallet['name']:
-            #found
             return json_wallet
     return None
 
 def access_wallet(name):
     #get wallet from json
+
+    return access_wallet_json(name)
     wallet_dict = access_wallet_json(name)
-    if not wallet_dict:
-        return None
+
+def build_wallet(wallet_dict):
     #constuct wallet
     wallet = TurtleWallet.build_wallet(wallet_dict)
     return wallet
 
-
-
-    def test_Frog():
-
-
-        # connection, chain_id = connect("kovan")
-        connection, chain_id = frog.connect("ropsten")
-
-        from_address = "0x029f7dd8f79fC19252Cb0cEb9c2021C727ae7074"
-        private_key = '6016f5822a0ea8f33a5e44444121e0e38c0d0748dc3188eba2ba301ac9978973'
-        frog = FrogWallet(from_address, private_key, "ropsten")
-
-
-        # balance of source before transaction
-        print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
-        print(f"transaction count: {connection.eth.getTransactionCount(from_address)}")
-
-        # send transaction
-        tx_hash = wallet.send_transaction(to_address="0x461254d3C61d1Af7DE6EBfF99f0e0D1040Aa9d8a",
-                                          value=w3.toWei(1, "ether"))
-        wallet.wait_for_transaction(tx_hash)
-
-        # balance of source after transaction
-        print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
-
+def list_wallets():
+    with open('data.txt') as f:
+        [print(x) for x in range(10)]
+        wallet_names = [json.loads(line)['name'] for line in f]
+        for name in wallet_names:
+            print(name)
 
 def test_extended():
     a = TurtleWallet("test")

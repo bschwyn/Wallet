@@ -9,6 +9,8 @@ def new_wallet(name):
 def access_wallet(name):
     return main.access_wallet(name)
 
+def list_wallets():
+    main.list_wallets()
 
 "python cli.py --wallet"
 
@@ -21,7 +23,6 @@ if args.wallet:
     print("Enter wallet name:")
     name = input()
     wallet = access_wallet(name)
-    print("wallet", wallet)
     if not wallet:
         print(f"A wallet with that name does not exist. Do you wish to create one?")
         while True:
@@ -34,11 +35,14 @@ if args.wallet:
                 break
             elif create_new == 'no':
                 sys.exit()
+        print("wallet created")
+    else:
+        print("wallet restored")
+
 
     #now do stuff with wallet?
     #add address
     # do you want to create a new address?
-    print("wallet created")
     sys.exit() #until I fix / implement the next part
 
     #wallet.list_addressses() # lists public addresses
@@ -50,10 +54,9 @@ if args.wallet:
             # something about this one bugs me.
             addr = wallet.generate_new_child_private_public_address()
 if args.list_wallets:
-    pass
-    # list wallets
+    list_wallets()
 if args.transact:
-    print("creating transaction")
+    print("creating transaction, you will enter your wallet name")
     print("Enter the name of your wallet:")
     wallet = input()
     print(f"Wallet name is {wallet}")
@@ -69,5 +72,6 @@ if args.transact:
     print("Do you wish to proceed with the transaction? Type 'Yes' to proceed, 'No' to cancel")
     proceed = input()
     if proceed == "Yes":
+
         pass
         # do transaction
