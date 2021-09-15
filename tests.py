@@ -1,9 +1,12 @@
+import sys
 import unittest
 from main import TurtleWallet
 from frog import FrogWallet
 
 from web3.auto.infura import w3
 
+# a lot of the tests here reference: https://iancoleman.io/bip39/
+# may want to get test vectors from here: https://en.bitcoin.it/wiki/BIP_0032
 
 class TestStringMethods(unittest.TestCase):
 
@@ -28,6 +31,7 @@ class TestStringMethods(unittest.TestCase):
 
 
     def test_Turtle3(self): #pass
+        pass
         # create wallet, generate entropy
         test_wallet = TurtleWallet("test")
         b = test_wallet.generate_entropy(128)
@@ -46,42 +50,50 @@ class TestStringMethods(unittest.TestCase):
         #    extended_public_key == 'xpub6BkTcpit577MTiPmqQ8q9XKJBJvra4WbBb6ioi1UHAMyUj8fNeJPPzjGKdQJqhyeKw4jEJZotv6Q9fYYVAPMGCLi8NRDkGvyDhkqNosZe6X')
         #print(private_key == 'asdf')
 
-    def test_master_private_key(self): #pass
-        a = TurtleWallet('test')
-        b = a.mnemonic_words('3817eb3902e8fc1fc19aa35c6ad980be')
-        print(b)
-        print(b == "day satisfy soft alarm more avocado all federal fragile fine gasp lava")
-        self.assertEqual(b,"day satisfy soft alarm more avocado all federal fragile fine gasp lava" )
+    # def test_extended(self):
+    #     a = TurtleWallet("test")
+    #     # private
+    #     seed = "59585af43a0de12e867c0eb14535151f0f456ef53738ee25696d32626ba5fd2f9724914b97b62259dfc224944618389a048cfd4aa4c2d3fd7e184c0cadf45218"
+    #     private_key, chain_code = a.generate_master_private_key_and_chain_code(seed)
+    #     extended_key_expected_hex = '0488ade40146886a8400000000738e0ba1970a09deb365c2e5e583ec0d787977f6a30e67a7e96fa42d5a983af4002b8b9cfa3dd327ce9bae448d0a31254cc0568181bbf7dca9b59ec2e7adf042bdedabacad'
+    #     # base58 encoded
+    #     extended_key_b58_expected = 'xprv9uRDRSEAyyjruNH6xr9ssR6vxH1kfe8V3HSMmVf9febopzRSNWArjWBwNdHCTxp2yBTqWgkE8rGbMR5PyXbBp5gKx5291C9Tn8C3CPFpPyn'
+    #     extended, extended_key_b58_actual = a.extended_master_private_key(private_key, chain_code, 'private main')
+    #     print(extended_key_b58_actual)
+    #     print(extended)
 
-    def test_extended(self): #pass
+    def test_extended(self):
+        #  from https://en.bitcoin.it/wiki/BIP_0032
         a = TurtleWallet("test")
-        # private
-        seed = "59585af43a0de12e867c0eb14535151f0f456ef53738ee25696d32626ba5fd2f9724914b97b62259dfc224944618389a048cfd4aa4c2d3fd7e184c0cadf45218"
+        seed = "000102030405060708090a0b0c0d0e0f"
         private_key, chain_code = a.generate_master_private_key_and_chain_code(seed)
-        extended_key_expected_hex = '0488ade40146886a8400000000738e0ba1970a09deb365c2e5e583ec0d787977f6a30e67a7e96fa42d5a983af4002b8b9cfa3dd327ce9bae448d0a31254cc0568181bbf7dca9b59ec2e7adf042bdedabacad'
-        # base58 encoded
-        extended_key_b58_expected = 'xprv9uRDRSEAyyjruNH6xr9ssR6vxH1kfe8V3HSMmVf9febopzRSNWArjWBwNdHCTxp2yBTqWgkE8rGbMR5PyXbBp5gKx5291C9Tn8C3CPFpPyn'
-        extended, extended_key_b58_actual = a.extended_master_private_key(private_key, chain_code, 'private main')
-        print(extended_key_b58_actual)
-        print(extended)
+        expected_ext_pub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
+        expected_ext_priv = "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
+        ext_priv, b58_ext_priv = a.extended_master_private_key(private_key, chain_code, 'private main')
+        self.assertEqual(b58_ext_priv, expected_ext_priv)
+        print(b58_ext_priv)
+
+
+    def test_address_from_private_key(self):
+        a = TurtleWallet("test")
 
     def test_transaction(self):
         pass
-        wallet = TurtleWallet("contains_test_eth") #I generated these mnemonic words with the wallet generator, but I don't think
-        # that means that this would necessarily be the same (as...)
-        words = "knife evoke duty acoustic artefact tumble bring diary valid couch motor gloom"
-        private_key, public_key, chain_code = wallet.generate_master_keys_and_codes(words)
-
-        # balance of source before transaction
-        print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
-        print(f"transaction count: {connection.eth.getTransactionCount(from_address)}")
+        # wallet = TurtleWallet("contains_test_eth") #I generated these mnemonic words with the wallet generator, but I don't think
+        # # that means that this would necessarily be the same (as...)
+        # words = "knife evoke duty acoustic artefact tumble bring diary valid couch motor gloom"
+        # private_key, public_key, chain_code = wallet.generate_master_keys_and_codes(words)
         #
-        # send transaction
-        tx_hash = wallet.send_transaction(to_address="0x461254d3C61d1Af7DE6EBfF99f0e0D1040Aa9d8a", value=w3.toWei(1, "ether"))
-        wallet.wait_for_transaction(tx_hash)
-
-             # balance of source after transaction
-             print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
+        # # balance of source before transaction
+        # print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
+        # print(f"transaction count: {connection.eth.getTransactionCount(from_address)}")
+        # #
+        # # send transaction
+        # tx_hash = wallet.send_transaction(to_address="0x461254d3C61d1Af7DE6EBfF99f0e0D1040Aa9d8a", value=w3.toWei(1, "ether"))
+        # wallet.wait_for_transaction(tx_hash)
+        #
+        # # balance of source after transaction
+        # print(f"current balance: {w3.fromWei(connection.eth.getBalance(from_address), 'ether')} ether")
 
 
 """

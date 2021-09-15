@@ -48,10 +48,7 @@ Considerations:
 - add extended public, private keys, serialization for this
 - add child key generation for depth 1
 - test CLI - new wallet generation
-    - addition of new wallets
     - use of wallets for transactions
-- save JSON of wallets to text file
-- list wallets in JSON file
 
 Bugs
 - how to do base58 encoding? the encoding in the book is 00-->1, 05-->3, 6f--->m or n, whereas this website
@@ -107,6 +104,9 @@ class TurtleWallet:
     chldren, and each child can have many children. While new keys could be constructed off of the grandchildren of the
     root, this implementation only makes new children. It also does not list the master address, it when list addresses
     is called, all of the indexed children of the master are returned.
+
+    Mnemonic Code Words: BIP-39
+    HD wallet: BIP-32. ?implemented totally????
     """
 
     def __init__(self, name):
@@ -162,8 +162,8 @@ class TurtleWallet:
         :return string of words separated by spaces:
         """
 
-        hash_obj = hashlib.sha256(bytes.fromhex(entropy)) #SOMETIMES gives error, but not always? fixed???
-        # ValueError: non-hexadecimal number found in fromhex() arg at position 31
+        hash_obj = hashlib.sha256(bytes.fromhex(entropy)) #SOMETIMES gives error, but not always?   #see test4
+        # ValueError: non-hexadecimal number found in fromhex() arg at position 31 #Test4
         checksum = hash_obj.hexdigest()[0] #str of hex char
         hex_str = str(entropy) + checksum
 
@@ -254,8 +254,8 @@ class TurtleWallet:
         private_key = '00' + private_key  # should start with 0x02 or 0x03
         extended = version_bytes + depth + parent_fingerpint + child_number + chain_code + private_key
 
-        hash1 = hashlib.sha256(bytes.fromhex(extended)).hexdigest()
-        hash2 = hashlib.sha256(hash1.encode('utf-8')).hexdigest()
+        hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
+        hash2 = hashlib.sha256(hash1).hexdigest()
         checksum = hash2[:8]
 
         encoded_string = base58.b58encode(bytes.fromhex(extended + checksum))
@@ -287,6 +287,13 @@ class TurtleWallet:
         if not public:
             key = '00' + key
         extended = version_bytes + depth + parent_fingerpint + child_number + chain_code + key
+        #hex-string
+        #hashlib takes
+
+        hash1 = hashlib.sha256(bytes.fromhex(extended)).hexdigest()
+        hash2 = hashlib.sha256(hash1.encode('utf-8')).hexdigest()
+        checksum = hash2[:8]
+
 
         hash1 = hashlib.sha256(bytes.fromhex(extended)).hexdigest()
         hash2 = hashlib.sha256(hash1.encode('utf-8')).hexdigest()
@@ -307,6 +314,7 @@ class TurtleWallet:
 
         hash1 = hashlib.sha256(bytes.fromhex(extended)).hexdigest()
         hash2 = hashlib.sha256(hash1.encode('utf-8')).hexdigest()
+        checksum = hash2[:8]
 
         # convert to base 58
 
@@ -439,7 +447,7 @@ def test_extended():
     print(extended)
 
 def test_seed_to_mnemonic_and_back():
-    test_wallet= TurtleWallet("test")
+    test_wallet = TurtleWallet("test")
     seed = test_wallet.generate_entropy(128)
     print(seed)
     mnemonic_words = test_wallet.mnemonic_words(seed)
@@ -448,6 +456,23 @@ def test_seed_to_mnemonic_and_back():
     #self.assertEqual(seed, seed2)
 
 
+def test_extended(): #fail, off by one?????
+    #  from https://en.bitcoin.it/wiki/BIP_0032
+    a = TurtleWallet("test")
+    seed = "000102030405060708090a0b0c0d0e0f"
+    private_key, chain_code = a.generate_master_private_key_and_chain_code(seed)
+    expected_ext_pub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
+    expected_ext_priv = "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
+    ext_priv, b58_ext_priv = a.extended_master_private_key2(private_key, chain_code, 'private main')
+    print(b58_ext_priv)
+    ext_priv, b58_ext_priv = a.extended_master_private_key(private_key, chain_code, 'private main')
+    print(b58_ext_priv)
+    #print(ext_priv)
+
+    ext_priv, b58_ext_priv = a.extended_master_private_key3(private_key, chain_code, 'private main')
+    print(b58_ext_priv)
+
 if __name__ == '__main__':
-    test_seed_to_mnemonic_and_back()
+    test_extended()
+    #test_seed_to_mnemonic_and_back()
     #test_master_private_key()
