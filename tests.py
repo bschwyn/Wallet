@@ -67,7 +67,6 @@ class TestStringMethods(unittest.TestCase):
         a = TurtleWallet("test")
         seed = "000102030405060708090a0b0c0d0e0f"
         private_key, chain_code = a.generate_master_private_key_and_chain_code(seed)
-        expected_ext_pub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
         expected_ext_priv = "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
         ext_priv, b58_ext_priv = a.extended_master_private_key(private_key, chain_code, 'private main')
         self.assertEqual(b58_ext_priv, expected_ext_priv)
@@ -76,6 +75,13 @@ class TestStringMethods(unittest.TestCase):
 
     def test_address_from_private_key(self):
         a = TurtleWallet("test")
+        #  from https://en.bitcoin.it/wiki/BIP_0032
+        seed = "000102030405060708090a0b0c0d0e0f"
+        private_key, chain_code = a.generate_master_private_key_and_chain_code(seed)
+        public_key = a.generate_public_key(private_key)
+        b58_ext_pub = a.extended_master_public_key(public_key, chain_code)
+        expected_ext_pub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
+        self.assertEqual(b58_ext_pub, expected_ext_pub)
 
     def test_transaction(self):
         pass
