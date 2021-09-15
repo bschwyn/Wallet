@@ -290,13 +290,8 @@ class TurtleWallet:
         #hex-string
         #hashlib takes
 
-        hash1 = hashlib.sha256(bytes.fromhex(extended)).hexdigest()
-        hash2 = hashlib.sha256(hash1.encode('utf-8')).hexdigest()
-        checksum = hash2[:8]
-
-
-        hash1 = hashlib.sha256(bytes.fromhex(extended)).hexdigest()
-        hash2 = hashlib.sha256(hash1.encode('utf-8')).hexdigest()
+        hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
+        hash2 = hashlib.sha256(hash1).hexdigest()
         checksum = hash2[:8]
 
         encoded_string = base58.b58encode(bytes.fromhex(extended + checksum))
@@ -312,14 +307,13 @@ class TurtleWallet:
 
         extended = version_bytes + depth + parent_fingerprint + child_number + chain_code + public_key
 
-        hash1 = hashlib.sha256(bytes.fromhex(extended)).hexdigest()
-        hash2 = hashlib.sha256(hash1.encode('utf-8')).hexdigest()
+        hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
+        hash2 = hashlib.sha256(hash1).hexdigest()
         checksum = hash2[:8]
 
         # convert to base 58
 
-        encoded_string = base58.b58encode(bytes.fromhex(extended + hash2))
-        # THIS IS INCORRECT
+        encoded_string = base58.b58encode(bytes.fromhex(extended + checksum))
         return encoded_string
 
     def generate_new_child_private_key(self, index, parent_private_key, parent_chain_code):
