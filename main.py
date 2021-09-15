@@ -138,10 +138,15 @@ class TurtleWallet:
         wallet.master_public_key = dictionary['info']['master_public_key']
         return wallet
 
+    #seed generation
+
     def generate_entropy(self, n_bits):
-        # int ----> hex_string, e.g. "deadbeef"
+        """
+        generates a hex string of entropy with n bits
+        :param n_bits (int):
+        :return: hexstring, e.g. "deadbeef"
+        """
         self.entropy_len = n_bits
-        # returns n_bits of entropy in a hex string
         # SECURITY ERROR --- need to switch this to "SecureRandom"
         entropysource = random.getrandbits(n_bits) #integer, base 10
         entropysource_hex = hex(entropysource)[2:] #str of hex char
@@ -151,9 +156,13 @@ class TurtleWallet:
         return entropysource_hex
 
     def mnemonic_words(self, entropy):
-        #expecting an entropy of a hexstring: e.g. entropy = "deadbeef"
+        """
+        generates a set of mnemonic words from a hexstring (e.g. "deadbeef")
+        :param entropy:
+        :return string of words separated by spaces:
+        """
 
-        hash_obj = hashlib.sha256(bytes.fromhex(entropy)) #SOMETIMES gives error, but not always?
+        hash_obj = hashlib.sha256(bytes.fromhex(entropy)) #SOMETIMES gives error, but not always? fixed???
         # ValueError: non-hexadecimal number found in fromhex() arg at position 31
         checksum = hash_obj.hexdigest()[0] #str of hex char
         hex_str = str(entropy) + checksum
@@ -174,6 +183,8 @@ class TurtleWallet:
         hash_str = hashlib.pbkdf2_hmac("sha512", mnemonic.encode('utf-8'), salt.encode('utf-8'), 2048)
         seed = hash_str.hex()
         return seed
+
+    # * * * key generation from seed or key * * *
 
     def generate_public_key(self, private_key):
 
@@ -228,42 +239,19 @@ class TurtleWallet:
         master_chain_code = right.hex()
         return master_private_key, master_chain_code
 
-
-    def generate_address(self, public_key):
-        #TOTALLY WRONG???
-        k = keccak.new(digest_bits=256)
-        print('generating address from: ', public_key)
-        public_key_string = str(public_key)
-        k.update(bytes(public_key_string, 'utf-8'))
-        hashed_key = k.hexdigest()
-        address = hashed_key[-20:] #last 20 digits
-        return address
-
-    def list_addresses(self):
-        #get master public address
-        # does it make sense to store the tree shape but not the values?
-        #addressess are created in order, with a max number of children for each row
-        pass
-
-
-    def generate_address_from_private_key(self, private_key):
-        public_key = self.generate_public_key_from_private_key(int(private_key,16))
-        address = self.generate_address(public_key)
-        return address
-
     def extended_master_private_key(self, private_key, chain_code, network):
-#0x0488B21E public, 0x0488ADE4 private; testnet: 0x043587CF public, 0x04358394 private)
+        # 0x0488B21E public, 0x0488ADE4 private; testnet: 0x043587CF public, 0x04358394 private)
         version = {'public main': '0488b21e',
-                         'private main': '0488ade4',
-                         'public test': '043587cf',
-                         'private test': '04358394'}
+                   'private main': '0488ade4',
+                   'public test': '043587cf',
+                   'private test': '04358394'}
 
         version_bytes = version[network]
-        depth = '00' # master
-        parent_fingerpint = '00000000' #hex
-        child_number = '00000000' #hex
+        depth = '00'  # master
+        parent_fingerpint = '00000000'  # hex
+        child_number = '00000000'  # hex
         chain_code = chain_code
-        private_key = '00' + private_key #should start with 0x02 or 0x03
+        private_key = '00' + private_key  # should start with 0x02 or 0x03
         extended = version_bytes + depth + parent_fingerpint + child_number + chain_code + private_key
 
         hash1 = hashlib.sha256(bytes.fromhex(extended)).hexdigest()
@@ -279,11 +267,11 @@ class TurtleWallet:
                    'public test': '043587cf',
                    'private test': '04358394'}
 
-        version = {'public':{'main': '0488b21e', 'test': '043587cf'},
+        version = {'public': {'main': '0488b21e', 'test': '043587cf'},
                    'private': {'main': '0488ade4', 'test': '04358394'}}
 
         version_bytes = version[public][network]
-        #depth
+        # depth
         depth = hex(depth)[2:]
         if len(depth) == 1:
             depth = '0' + depth
@@ -308,8 +296,8 @@ class TurtleWallet:
         return extended, encoded_string
 
     def extended_master_public_key(self, public_key, chain_code):
-        version_bytes = '2323a043587CF' # public testnet
-        depth = '00' #for master, 1 for level-1 derived...
+        version_bytes = '2323a043587CF'  # public testnet
+        depth = '00'  # for master, 1 for level-1 derived...
         parent_fingerprint = '00000000'
         child_number = '00000000'
         chain_code = chain_code
@@ -326,7 +314,6 @@ class TurtleWallet:
         # THIS IS INCORRECT
         return encoded_string
 
-
     def generate_new_child_private_key(self, index, parent_private_key, parent_chain_code):
         # wouldn't want to give the wrong chain code with the private key --- is there any way to check that these are associated?
         hash_str = parent_private_key + parent_chain_code + index
@@ -335,6 +322,29 @@ class TurtleWallet:
     def generate_new_child_public_key(self):
         pass
 
+
+    # * * * address generation * * *
+
+    def generate_address(self, public_key):
+        #TOTALLY WRONG???
+        k = keccak.new(digest_bits=256)
+        print('generating address from: ', public_key)
+        public_key_string = str(public_key)
+        k.update(bytes(public_key_string, 'utf-8'))
+        hashed_key = k.hexdigest()
+        address = hashed_key[-20:] #last 20 digits
+        return address
+
+    def list_addresses(self):
+        #get master public address
+        # does it make sense to store the tree shape but not the values?
+        #addressess are created in order, with a max number of children for each row
+        pass
+
+    def generate_address_from_private_key(self, private_key):
+        public_key = self.generate_public_key_from_private_key(int(private_key,16))
+        address = self.generate_address(public_key)
+        return address
 
     # transaction
     def send_transaction(self, private_key, to_address, value):
