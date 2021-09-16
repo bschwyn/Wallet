@@ -72,16 +72,20 @@ class TestStringMethods(unittest.TestCase):
         self.assertEqual(b58_ext_priv, expected_ext_priv)
         print(b58_ext_priv)
 
-
-    def test_address_from_private_key(self):
+    def test_address_from_public_key(self):
         a = TurtleWallet("test")
-        #  from https://en.bitcoin.it/wiki/BIP_0032
-        seed = "000102030405060708090a0b0c0d0e0f"
-        private_key, chain_code = a.generate_master_private_key_and_chain_code(seed)
-        public_key = a.generate_public_key(private_key)
-        b58_ext_pub = a.extended_master_public_key(public_key, chain_code)
-        expected_ext_pub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
-        self.assertEqual(b58_ext_pub, expected_ext_pub)
+
+        #another example https://hackernoon.com/how-to-generate-ethereum-addresses-technical-address-generation-explanation-25r3zqo
+        public_key = "048e66b3e549818ea2cb354fb70749f6c8de8fa484f7530fc447d5fe80a1c424e4f5ae648d648c980ae7095d1efad87161d83886ca4b6c498ac22a93da5099014a"
+        address = a.generate_address_from_public_key(public_key)
+        expected_address = "00b54e93ee2eba3086a55f4249873e291d1ab06c"
+        self.assertEqual(address, expected_address)
+
+        #from Mastering Ethereum
+        public_key = "046e145ccef1033dea239875dd00dfb4fee6e3348b84985c92f103444683bae07b83b5c38e5e2b0c8529d7fa3f64d46daa1ece2d9ac14cab9477d042c84c32ccd0"
+        address = a.generate_address_from_public_key(public_key)
+        expected_address = "001d3f1ef827552ae1114027bd3ecf1f086ba0f9"
+        self.assertEqual(address, expected_address)
 
     def test_transaction(self):
         pass

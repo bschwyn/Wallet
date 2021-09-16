@@ -186,7 +186,8 @@ class TurtleWallet:
 
     # * * * key generation from seed or key * * *
 
-    def generate_public_key(self, private_key):
+    def generate_public_key_from_private_key(self, private_key):
+        #currently takes integer
 
         # curve configuration
         mod = pow(2, 256) - pow(2, 32) - pow(2, 9) - pow(2, 8) - pow(2, 7) - pow(2, 6) - pow(2, 4) - pow(2, 0)
@@ -217,7 +218,8 @@ class TurtleWallet:
         public_key = ecdsa.applyDoubleAndAddMethod(x0, y0, private_key, a, b, mod)
         # print("public key: ", publicKey)
 
-        public_key_hex = "04" + hex(public_key[0])[2:] + hex(public_key[1])[2:]
+        prefix = "04"
+        public_key_hex = prefix + hex(public_key[0])[2:] + hex(public_key[1])[2:]
         print("public key (hex): ", public_key_hex)
 
         return public_key_hex
@@ -228,7 +230,7 @@ class TurtleWallet:
         right = hash_bytes[32:]
         master_private_key = left.hex()
         master_chain_code = right.hex()
-        master_public_key = self.generate_public_key(int(master_private_key, 16)) ### maybe change this so it accepts hex strings, rather than integers
+        master_public_key = self.generate_public_key_from_private_key(int(master_private_key, 16)) ### maybe change this so it accepts hex strings, rather than integers
         return master_private_key, master_public_key, master_chain_code
 
     def generate_master_private_key_and_chain_code(self, seed):
@@ -294,7 +296,7 @@ class TurtleWallet:
         hash2 = hashlib.sha256(hash1).hexdigest()
         checksum = hash2[:8]
 
-        encoded_string = base58.b58encode(bytes.fromhex(extended + checksum))
+        encoded_string = base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
         return extended, encoded_string
 
     def extended_master_public_key(self, public_key, chain_code):
@@ -313,7 +315,7 @@ class TurtleWallet:
 
         # convert to base 58
 
-        encoded_string = base58.b58encode(bytes.fromhex(extended + checksum))
+        encoded_string = base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
         return encoded_string
 
     def generate_new_child_private_key(self, index, parent_private_key, parent_chain_code):
@@ -327,13 +329,21 @@ class TurtleWallet:
 
     # * * * address generation * * *
 
-    def generate_address(self, public_key):
+    def generate_address_from_public_key(self, public_key):
+        """
+        keccak256 hash the public, then take last 20 bytes to get the ethereum address
+
+        :param public_key:
+        :return:
+        """
+        #strip hex "04" prefix from the beginning of public key
+        public_key = public_key[2:]
         k = keccak.new(digest_bits=256)
         print('generating address from: ', public_key)
         public_key_string = str(public_key)
-        k.update(bytes(public_key_string, 'utf-8'))
+        k.update(bytes.fromhex(public_key_string))
         hashed_key = k.hexdigest()
-        address = hashed_key[-20:] #last 20 digits
+        address = hashed_key[-40:] #last 20 bytes = 40 chars
         return address
 
     def list_addresses(self):
@@ -344,7 +354,7 @@ class TurtleWallet:
 
     def generate_address_from_private_key(self, private_key):
         public_key = self.generate_public_key_from_private_key(int(private_key,16))
-        address = self.generate_address(public_key)
+        address = self.generate_address_from_public_key(public_key)
         return address
 
     # transaction
@@ -449,36 +459,7 @@ def test_seed_to_mnemonic_and_back():
     #self.assertEqual(seed, seed2)
 
 
-def test_extended(): #fail, off by one?????
-    #  from https://en.bitcoin.it/wiki/BIP_0032
-    a = TurtleWallet("test")
-    seed = "000102030405060708090a0b0c0d0e0f"
-    private_key, chain_code = a.generate_master_private_key_and_chain_code(seed)
-    expected_ext_pub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
-    expected_ext_priv = "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
-    ext_priv, b58_ext_priv = a.extended_master_private_key2(private_key, chain_code, 'private main')
-    print(b58_ext_priv)
-    ext_priv, b58_ext_priv = a.extended_master_private_key(private_key, chain_code, 'private main')
-    print(b58_ext_priv)
-    #print(ext_priv)
-
-    ext_priv, b58_ext_priv = a.extended_master_private_key3(private_key, chain_code, 'private main')
-    print(b58_ext_priv)
-
-def test_extended2():
-    #  from https://en.bitcoin.it/wiki/BIP_0032
-    a = TurtleWallet("test")
-    seed = "000102030405060708090a0b0c0d0e0f"
-    private_key, chain_code = a.generate_master_private_key_and_chain_code(seed)
-    expected_ext_priv = "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
-    ext_priv, b58_ext_priv = a.extended_master_private_key(private_key, chain_code, 'private main')
-    #self.assertEqual(b58_ext_priv, expected_ext_priv)
-    print(b58_ext_priv)
-    print(expected_ext_priv)
-    print(b58_ext_priv.decode('utf-8'))
-    print(b58_ext_priv.decode('utf-8') == expected_ext_priv)
-
 if __name__ == '__main__':
-    test_extended2()
+    pass
     #test_seed_to_mnemonic_and_back()
     #test_master_private_key()
