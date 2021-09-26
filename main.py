@@ -112,9 +112,17 @@ class TurtleWallet:
     def __init__(self, name):
         self.wallet_name = name
         self.entropy_len = 128 ### needs to be set more appropriately later
-        pass
+        # not sure which of these things should be saved or how (for security)
+        # but making a list anyways for now
+        self.network = None
+        self.seed = None
+        self.mnemonic_words
+        self.private_key = None
+        self.public_key = None
+        self.extended_master_None_key = None
+        #self.extended_master_public_key = None
 
-    def connect(network):
+    def connect(self, network):
         if network == "kovan":
             infura_kovan_url = "https://kovan.infura.io/v3/afc8c9407f364433880c670ec94b3534"
             web3 = Web3(Web3.HTTPProvider(infura_kovan_url))
@@ -129,6 +137,8 @@ class TurtleWallet:
             ganache_url = "http://localhost:7545"
             web3 = Web3(Web3.HTTPProvider(ganache_url))
             chain_id = 1337
+        self.connection = web3
+        self.chain_id = chain_id
         return web3, chain_id
 
     @classmethod
@@ -186,8 +196,10 @@ class TurtleWallet:
 
     # * * * key generation from seed or key * * *
 
-    def generate_public_key_from_private_key(self, private_key):
-        #currently takes integer
+    def uncompressed_public_key(self, private_key):
+        #uncompressed key
+        #convert hex to int
+        private_key = int(private_key,16)
 
         # curve configuration
         mod = pow(2, 256) - pow(2, 32) - pow(2, 9) - pow(2, 8) - pow(2, 7) - pow(2, 6) - pow(2, 4) - pow(2, 0)
@@ -202,16 +214,14 @@ class TurtleWallet:
         x0 = 55066263022277343669578718895168534326250603453777594175500187360389116729240
         y0 = 32670510020758816978083085130507043184471273380659243275938904335757337482424
 
-        print("---------------------")
-        print("initial configuration")
-        print("---------------------")
-        print("Curve: y^2 = x^3 + ", a, "*x + ", b)
-        print("Base point: (", x0, ", ", y0, ")\n")
-        print("modulo: ", mod)
-        print("order of group: ", order)
+        #initial configuration
+        # print("Curve: y^2 = x^3 + ", a, "*x + ", b)
+        # print("Base point: (", x0, ", ", y0, ")\n")
+        #print("modulo: ", mod)
+        # print("order of group: ", order)
 
         # print("private key: ", privateKey)
-        print("private key (hex): ", hex(private_key)[2:], " (keep this secret!)\n")
+       # print("private key (hex): ", hex(private_key)[2:], " (keep this secret!)\n")
 
         ecdsa = EllipticCurveMath()
 
@@ -220,26 +230,109 @@ class TurtleWallet:
 
         prefix = "04"
         public_key_hex = prefix + hex(public_key[0])[2:] + hex(public_key[1])[2:]
-        print("public key (hex): ", public_key_hex)
+        #print("public key (hex): ", public_key_hex)
 
         return public_key_hex
 
-    def generate_master_keys_and_codes(self, seed):
+    def compressed_public_key(self, private_key):
+        # compressed key (only x coordinate w/ 02 if y is positive, 03 if y is negative
+        # convert hex to int
+        private_key = int(private_key, 16)
+
+        # curve configuration
+        mod = pow(2, 256) - pow(2, 32) - pow(2, 9) - pow(2, 8) - pow(2, 7) - pow(2, 6) - pow(2, 4) - pow(2, 0)
+        order = 115792089237316195423570985008687907852837564279074904382605163141518161494337
+
+        # curve configuration
+        # y^2 = x^3 + a*x + b = x^3 + 7
+        a = 0
+        b = 7
+
+        # base point on the curve
+        x0 = 55066263022277343669578718895168534326250603453777594175500187360389116729240
+        y0 = 32670510020758816978083085130507043184471273380659243275938904335757337482424
+
+        # initial configuration
+        # print("Curve: y^2 = x^3 + ", a, "*x + ", b)
+        # print("Base point: (", x0, ", ", y0, ")\n")
+        # print("modulo: ", mod)
+        # print("order of group: ", order)
+        ecdsa = EllipticCurveMath()
+        public_key = ecdsa.applyDoubleAndAddMethod(x0, y0, private_key, a, b, mod)
+
+        prefix = "02" if public_key[1] > 0 else "03"
+        compressed_public_key_hex = prefix + hex(public_key[0])[2:]
+        return compressed_public_key_hex
+
+    def generate_key_and_code(self, seed):
         hash_bytes = hmac.new(b"Bitcoin seed", bytes.fromhex(seed), hashlib.sha512).digest()
         left = hash_bytes[:32]  # 32 since hmac returns bytes
         right = hash_bytes[32:]
-        master_private_key = left.hex()
-        master_chain_code = right.hex()
-        master_public_key = self.generate_public_key_from_private_key(int(master_private_key, 16)) ### maybe change this so it accepts hex strings, rather than integers
+        key = left.hex()
+        chain_code = right.hex()
+        return key, chain_code
+
+    def generate_master_keys_and_codes(self, master_seed):
+        master_private_key, master_chain_code = self.generate_key_and_code(master_seed)
+        master_public_key = self.uncompressed_public_key(master_private_key) ### maybe change this so it accepts hex strings, rather than integers
         return master_private_key, master_public_key, master_chain_code
 
-    def generate_master_private_key_and_chain_code(self, seed):
-        hash_bytes = hmac.new(b"Bitcoin seed", bytes.fromhex(seed), hashlib.sha512).digest()
-        left = hash_bytes[:32] #32 since hmac returns bytes
-        right = hash_bytes[32:]
-        master_private_key = left.hex()
-        master_chain_code = right.hex()
+    def generate_master_private_key_and_chain_code(self, master_seed):
+        master_private_key, master_chain_code = self.generate_key_and_code(master_seed)
         return master_private_key, master_chain_code
+
+    def bip32_key_fingerprint(self, key):
+        #should be private key???? why?
+        #do I need to test that the key is private and not public?
+        #ripemd160(sha256(parentpriv)) / hash160(parenpriv)
+        hash1 = hashlib.sha256(bytes.fromhex(key)).digest()
+        hash2 = hashlib.new('ripemd160', hash1)
+        return hash2.hexdigest()[:8]
+
+    def int_to_8bit_hex(self, val):
+        val = hex(val)[2:]
+        return val.zfill(8)
+
+
+    def extended_key(self, network, depth, index, key, parent, chain_code):
+        version = {'public main': '0488b21e',
+                   'private main': '0488ade4',
+                   'public test': '043587cf',
+                   'private test': '04358394'}
+
+        version_bytes = version[network]
+        # depth
+        depth = hex(depth)[2:]
+        if len(depth) == 1:
+            depth = '0' + depth
+        elif len(depth) > 2:
+            raise ValueError
+
+        #child_number = hex(index)[2:]  # hex
+        #child_number = child_number.zfill(8)
+        child_number = self.int_to_8bit_hex(index)
+        chain_code = chain_code
+        if "private" in network:
+            key = '00' + key
+            public_key = self.uncompressed_public_key(parent)
+        else:
+            public_key = parent
+
+
+        parent_fingerprint = self.bip32_key_fingerprint(parent) if parent else '00000000'
+        #parent fingerprint = hash160 of parent public key
+        extended = version_bytes + depth + parent_fingerprint + child_number + chain_code + key
+
+        print("fingerprint", parent_fingerprint)
+
+
+        hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
+        hash2 = hashlib.sha256(hash1).hexdigest()
+        checksum = hash2[:8]
+
+        encoded_string = base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
+        #print(base58.b58encode(bytes.fromhex(version_bytes + '1234567890')))
+        return encoded_string
 
     def extended_master_private_key(self, private_key, chain_code, network):
         # 0x0488B21E public, 0x0488ADE4 private; testnet: 0x043587CF public, 0x04358394 private)
@@ -260,47 +353,11 @@ class TurtleWallet:
         hash2 = hashlib.sha256(hash1).hexdigest()
         checksum = hash2[:8]
 
-        encoded_string = base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
-        return extended, encoded_string
-
-    def extended_key(self, public, network, depth, index, key, parent='', chain_code=''):
-        version = {'public main': '0488b21e',
-                   'private main': '0488ade4',
-                   'public test': '043587cf',
-                   'private test': '04358394'}
-
-        version = {'public': {'main': '0488b21e', 'test': '043587cf'},
-                   'private': {'main': '0488ade4', 'test': '04358394'}}
-
-        version_bytes = version[public][network]
-        # depth
-        depth = hex(depth)[2:]
-        if len(depth) == 1:
-            depth = '0' + depth
-        elif len(depth) > 2:
-            raise ValueError
-
-        if not parent:
-            parent_fingerpint = '00000000'  # hex
-        else:
-            parent_fingerprint = parent[:8]
-        child_number = hex(index)[:2]  # hex
-        chain_code = chain_code
-        if not public:
-            key = '00' + key
-        extended = version_bytes + depth + parent_fingerpint + child_number + chain_code + key
-        #hex-string
-        #hashlib takes
-
-        hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
-        hash2 = hashlib.sha256(hash1).hexdigest()
-        checksum = hash2[:8]
-
-        encoded_string = base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
-        return extended, encoded_string
+        b58encoded_ext_private_key= base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
+        return b58encoded_ext_private_key
 
     def extended_master_public_key(self, public_key, chain_code):
-        version_bytes = '2323a043587CF'  # public testnet
+        version_bytes = '043587CF'  # public testnet
         depth = '00'  # for master, 1 for level-1 derived...
         parent_fingerprint = '00000000'
         child_number = '00000000'
@@ -313,18 +370,33 @@ class TurtleWallet:
         hash2 = hashlib.sha256(hash1).hexdigest()
         checksum = hash2[:8]
 
-        # convert to base 58
+        # convert to base 58https://www.thetimes.co.uk/article/dating-undateable-at-29-are-my-views-too-problematic-for-hinge-and-bumble-3ftfsf5x9
 
-        encoded_string = base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
-        return encoded_string
+        b58encoded_ext_public_key = base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
+        return b58encoded_ext_public_key
 
-    def generate_new_child_private_key(self, index, parent_private_key, parent_chain_code):
-        # wouldn't want to give the wrong chain code with the private key --- is there any way to check that these are associated?
-        hash_str = parent_private_key + parent_chain_code + index
-        hashlib.sha512(hash_str.encode('utf-8'))
+    # * * * child generation * * *
 
-    def generate_new_child_public_key(self):
-        pass
+
+    def child_private_key_from_parent_private_key(self, index, parent_private_key, parent_chain_code):
+        index = hex(index)[2:]
+        index = index.zfill(8)
+        seed = parent_private_key + parent_chain_code + index
+        private_child_key, chain_code = self.generate_key_and_code(seed) #hmac and split
+        order = 115792089237316195423570985008687907852837564279074904382605163141518161494337
+        private_child_key = int(private_child_key,16) + int(parent_private_key,16) % order
+        private_child_key = hex(private_child_key)[2:]
+        return private_child_key, chain_code
+
+    def child_public_key_from_parent_public_key(self, index, parent_public_key, parent_chain_code):
+        # convert index from int to 32 bits of hex
+        index = hex(index)[2:]
+        index = index.zfill(8)
+        seed = parent_public_key + parent_chain_code + index
+        print(len(parent_public_key), len(parent_chain_code), len(index))
+        public_child_key, chain_code = self.generate_key_and_code(seed)
+        public_child_key = public_child_key + parent_public_key
+        return public_child_key, chain_code
 
 
     # * * * address generation * * *
@@ -353,7 +425,7 @@ class TurtleWallet:
         pass
 
     def generate_address_from_private_key(self, private_key):
-        public_key = self.generate_public_key_from_private_key(int(private_key,16))
+        public_key = self.uncompressed_public_key(private_key)
         address = self.generate_address_from_public_key(public_key)
         return address
 
@@ -459,7 +531,74 @@ def test_seed_to_mnemonic_and_back():
     #self.assertEqual(seed, seed2)
 
 
+def test_child_keys():
+    a = TurtleWallet("test")
+    seed = "000102030405060708090a0b0c0d0e0f"
+    #create private key, chain code from seed
+    private_key, chain_code = a.generate_master_private_key_and_chain_code(seed)
+    public_key = a.uncompressed_public_key(private_key)
+    # create master private key
+    xprv = a.extended_master_private_key(private_key, chain_code, 'private main')
+    xpub = a.extended_master_public_key(public_key, chain_code)
+
+    #print('public_key:', public_key)
+    child_private_key1, child_chain1 = a.child_private_key_from_parent_private_key(1, private_key, chain_code)
+    child_public_key1, child_chain12 = a.child_public_key_from_parent_public_key(1, public_key, chain_code)
+    child_public_key12 = a.uncompressed_public_key(child_private_key1)
+    print("child private key from private")
+    print(child_private_key1)
+    print("child public key from private via has")
+    print(child_public_key1)
+    print("child public key direct from private")
+    print(child_public_key12)
+    print(child_public_key12 == child_public_key1)
+    print(child_chain12 == child_chain1)
+
+    print(a.extended_key("private main", depth=1, index=0, ))
+
+    #self.assertEqual(child_public_key12, child_public_key1)
+    #self.assertEqual(child_chain12, child_chain1)
+
+
+def test_extended_m_0():
+    #https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+    a = TurtleWallet("test")
+    seed = "000102030405060708090a0b0c0d0e0f"
+    private_key, chain_code = a.generate_master_private_key_and_chain_code(seed)
+    #public_key = a.uncompressed_public_key(private_key)
+    expected_ext_priv = "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
+    actual_ext_priv = a.extended_master_private_key(private_key, chain_code, 'private main')
+    print(expected_ext_priv, actual_ext_priv)
+    print(expected_ext_priv == actual_ext_priv)
+
+    child_private_key, chain_code0 = a.child_private_key_from_parent_private_key(0, private_key, chain_code)
+    actual_child_ext_private_key = a.extended_key('private main', 1, 0, child_private_key, private_key, chain_code)
+    expected_ext_priv_m0 = "xprv9uHRZZhk6KAJC1avXpDAp4MDc3sQKNxDiPvvkX8Br5ngLNv1TxvUxt4cV1rGL5hj6KCesnDYUhd7oWgT11eZG7XnxHrnYeSvkzY7d2bhkJ7"
+    print(actual_child_ext_private_key)
+    print(expected_ext_priv_m0)
+    print(actual_child_ext_private_key == expected_ext_priv_m0)
+
+
+    #expected_ext_pub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
+    #actual_ext_pub = a.extended_master_public_key(public_key, chain_code, 'public main')
+    #self.assertEqual(expected_ext_priv, actual_ext_priv)
+    #self.assertEqual(expected_ext_pub, actual_ext_pub)
+
+    """
+    hex representation of expected_extended_child_private_key m/0:
+    164
+    0488ade4 01 3442193e 80000000 47fdacbd0f1097043b78c63c20c34ef4ed9a111d980047ad16282c7ae6236141 00 edb2e14f9ee77d26dd93b4ecede8d16ed408ce149b6cd80b0715a2d911a0afea 0a794dec
+    version index finger childnumber chaincode                                                     private key                                                        checksum
+    
+    
+    
+    """
+
+
+
 if __name__ == '__main__':
+    test_extended_m_0()
+    #test_child_keys()
     pass
     #test_seed_to_mnemonic_and_back()
     #test_master_private_key()

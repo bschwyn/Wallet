@@ -62,7 +62,7 @@ class TestStringMethods(unittest.TestCase):
     #     print(extended_key_b58_actual)
     #     print(extended)
 
-    def test_extended(self):
+    def test_master_extended(self):
         #  from https://en.bitcoin.it/wiki/BIP_0032
         a = TurtleWallet("test")
         seed = "000102030405060708090a0b0c0d0e0f"
@@ -71,6 +71,56 @@ class TestStringMethods(unittest.TestCase):
         ext_priv, b58_ext_priv = a.extended_master_private_key(private_key, chain_code, 'private main')
         self.assertEqual(b58_ext_priv, expected_ext_priv)
         print(b58_ext_priv)
+
+    def test_extended_m(self):
+        # https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+        a = TurtleWallet("test")
+        seed = "000102030405060708090a0b0c0d0e0f"
+        private_key, chain_code = a.generate_master_private_key_and_chain_code(seed)
+        public_key = a.uncompressed_public_key(private_key)
+        expected_ext_priv = "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
+        expected_ext_pub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
+
+        actual_ext_priv = a.extended_master_private_key(private_key, chain_code, 'private main')
+        actual_ext_pub = a.extended_master_public_key(public_key, chain_code, 'public main')
+        self.assertEqual(expected_ext_priv, actual_ext_priv)
+        self.assertEqual(expected_ext_pub, actual_ext_pub)
+
+    def test_parent_fingerprint(self):
+        #
+
+        a = TurtleWallet("test")
+        seed = "000102030405060708090a0b0c0d0e0f"
+        #I know from other tests that the public/private keys chain-m are good for this, and also
+        #extended public keys
+
+        #working backwards from chain m/O-h extended private key
+        # b58: xprv9uHRZZhk6KAJC1avXpDAp4MDc3sQKNxDiPvvkX8Br5ngLNv1TxvUxt4cV1rGL5hj6KCesnDYUhd7oWgT11eZG7XnxHrnYeSvkzY7d2bhkJ7
+        # hex: 0488ade4013442193e8000000047fdacbd0f1097043b78c63c20c34ef4ed9a111d980047ad16282c7ae623614100edb2e14f9ee77d26dd93b4ecede8d16ed408ce149b6cd80b0715a2d911a0afea0a794dec
+        # split into portions
+        #     0488ade4 01 3442193e 80000000 47fdacbd0f1097043b78c63c20c34ef4ed9a111d980047ad16282c7ae6236141 00 edb2e14f9ee77d26dd93b4ecede8d16ed408ce149b6cd80b0715a2d911a0afea 0a794dec
+        # fingerprint of parent key is 3442193e
+
+
+    def test_extended_m_0(self):
+        #https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+        a = TurtleWallet("test")
+        seed = "000102030405060708090a0b0c0d0e0f"
+        private_key, chain_code = a.generate_master_private_key_and_chain_code(seed)
+        public_key = a.uncompressed_public_key(private_key)
+        expected_ext_priv = "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
+        expected_ext_pub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
+
+        actual_ext_priv = a.extended_master_private_key(private_key, chain_code, 'private main')
+        actual_ext_pub = a.extended_master_public_key(public_key, chain_code, 'public main')
+        self.assertEqual(expected_ext_priv, actual_ext_priv)
+        self.assertEqual(expected_ext_pub, actual_ext_pub)
+
+        child_private_key = a.child_private_key_from_parent_private_key(0, private_key, chain_code)
+        child_ext_private_key = a.extended_key('private main', 1, 0, child_private_key, private_key, chain_code)
+
+        expected_ext_priv_m0 = "xprv9uHRZZhbkedL37eZEnyrNsQPFZYRAvjy5rt6M1nbEkLSo378x1CQQLo2xxBvREwiK6kqf7GRNvsNEchwibzXaV6i5GcsgyjBeRguXhKsi4R"
+        self.assertEqual(child_ext_private_key, expected_ext_priv_m0)
 
     def test_address_from_public_key(self):
         a = TurtleWallet("test")
@@ -86,6 +136,39 @@ class TestStringMethods(unittest.TestCase):
         address = a.generate_address_from_public_key(public_key)
         expected_address = "001d3f1ef827552ae1114027bd3ecf1f086ba0f9"
         self.assertEqual(address, expected_address)
+
+    def test_child_keys(self):
+        a = TurtleWallet("test")
+        seed = "000102030405060708090a0b0c0d0e0f"
+        private_key, chain_code = a.generate_master_private_key_and_chain_code(seed)
+        print("chain code:", chain_code)
+        print("private_key:", private_key)
+        public_key = a.generate_public_key_from_private_key(private_key)
+        #print('public_key:', public_key)
+        child_private_key1, child_chain1 = a.generate_new_child_private_key(1, private_key, chain_code)
+        child_public_key1, child_chain12 = a.generate_new_child_public_key(1, public_key, chain_code)
+        child_public_key12 = a.generate_public_key_from_private_key(child_private_key1)
+        self.assertEqual(child_public_key12, child_public_key1)
+        self.assertEqual(child_chain12, child_chain1)
+
+
+    def test_transaction(self):
+        from_address = "0x029f7dd8f79fC19252Cb0cEb9c2021C727ae7074"
+        private_key = '6016f5822a0ea8f33a5e44444121e0e38c0d0748dc3188eba2ba301ac9978973'
+        wallet = TurtleWallet("test")
+        wallet.connect("ropsten")
+
+        # balance of source before transaction
+        print(f"current balance: {w3.fromWei(wallet.connection.eth.getBalance(from_address), 'ether')} ether")
+        print(f"transaction count: {wallet.connection.eth.getTransactionCount(from_address)}")
+
+        # send transaction
+        tx_hash = wallet.send_transaction(to_address="0x461254d3C61d1Af7DE6EBfF99f0e0D1040Aa9d8a",
+                                        value=w3.toWei(1, "ether"))
+        wallet.wait_for_transaction(tx_hash)
+
+        # balance of source after transaction
+        print(f"current balance: {w3.fromWei(wallet.connection.eth.getBalance(from_address), 'ether')} ether")
 
     def test_transaction(self):
         pass
