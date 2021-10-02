@@ -114,7 +114,7 @@ class TestStringMethods(unittest.TestCase):
         seed = "000102030405060708090a0b0c0d0e0f"
         #master keys, "chain m"
         private_key, chain_code = a.master_private_key_and_chain_code(seed)
-        public_key = a.uncompressed_public_key(private_key)
+        public_key = a.compressed_public_key(private_key)
         expected_ext_priv = "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
         expected_ext_pub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
         actual_ext_priv = a.extended_master_private_key(private_key, chain_code, 'private main')

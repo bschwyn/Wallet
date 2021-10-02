@@ -282,10 +282,8 @@ class TurtleWallet:
 
         version_bytes = version[network]
         # depth
-        depth = hex(depth)[2:]
-        if len(depth) == 1:
-            depth = '0' + depth
-        elif len(depth) > 2:
+        depth = hex(depth)[2:].zfill(2)
+        if len(depth) > 2:
             raise ValueError
 
         #child_number = hex(index)[2:]  # hex
@@ -294,66 +292,26 @@ class TurtleWallet:
         chain_code = chain_code
         if "private" in network:
             key = '00' + key
-            public_key = self.uncompressed_public_key(parent)
-        else:
-            public_key = parent
-
 
         parent_fingerprint = self.bip32_key_fingerprint(parent) if parent else '00000000'
-        #parent fingerprint = hash160 of parent public key
         extended = version_bytes + depth + parent_fingerprint + child_number + chain_code + key
-
-        print("fingerprint", parent_fingerprint)
-
 
         hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
         hash2 = hashlib.sha256(hash1).hexdigest()
         checksum = hash2[:8]
 
         encoded_string = base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
-        #print(base58.b58encode(bytes.fromhex(version_bytes + '1234567890')))
         return encoded_string
 
     def extended_master_private_key(self, private_key, chain_code, network):
-        # 0x0488B21E public, 0x0488ADE4 private; testnet: 0x043587CF public, 0x04358394 private)
-        version = {'public main': '0488b21e',
-                   'private main': '0488ade4',
-                   'public test': '043587cf',
-                   'private test': '04358394'}
-
-        version_bytes = version[network]
-        #version_bytes = "0488ade4"
-        depth = '00'  # master
-        parent_fingerpint = '00000000'  # hex
-        child_number = '00000000'  # hex
-        chain_code = chain_code
-        private_key = '00' + private_key  # should start with 0x02 or 0x03
-        extended = version_bytes + depth + parent_fingerpint + child_number + chain_code + private_key
-
-        hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
-        hash2 = hashlib.sha256(hash1).hexdigest()
-        checksum = hash2[:8]
-
-        b58encoded_ext_private_key= base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
-        return b58encoded_ext_private_key
+        return self.extended_key(network="private main", depth=0, index=0, key=private_key, parent=None, chain_code=chain_code)
 
     def extended_master_public_key(self, public_key, chain_code):
-        version_bytes = '0488b21e'  # public main
-        depth = '00'  # for master, 1 for level-1 derived...
-        parent_fingerprint = '00000000'
-        child_number = '00000000'
-        chain_code = chain_code
-        public_key = public_key
-
-        extended = version_bytes + depth + parent_fingerprint + child_number + chain_code + public_key
-        hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
-        hash2 = hashlib.sha256(hash1).hexdigest()
-        checksum = hash2[:8]
-
-        # convert to base 58https://www.thetimes.co.uk/article/dating-undateable-at-29-are-my-views-too-problematic-for-hinge-and-bumble-3ftfsf5x9
-
-        b58encoded_ext_public_key = base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
-        return b58encoded_ext_public_key
+        #public key needs to be compressed
+        print(public_key)
+        if (public_key[:2] != "02") and (public_key[:2] != "03"):
+            raise ValueError
+        return self.extended_key(network="public main", depth=0, index=0, key=public_key, parent=None, chain_code=chain_code)
 
     # * * * child generation * * *
 
