@@ -67,10 +67,9 @@ class TestStringMethods(unittest.TestCase):
         a = TurtleWallet("test")
         seed = "000102030405060708090a0b0c0d0e0f"
         private_key, chain_code = a.master_private_key_and_chain_code(seed)
-        public_key = a.uncompressed_public_key(private_key)
+        public_key = a.compressed_public_key(private_key)
         expected_ext_pub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
         actual_ext_pub = a.extended_master_public_key(public_key, chain_code)
-        print(actual_ext_pub)
         self.assertEqual(expected_ext_pub, actual_ext_pub)
 
 

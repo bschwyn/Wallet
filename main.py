@@ -322,7 +322,7 @@ class TurtleWallet:
                    'private test': '04358394'}
 
         version_bytes = version[network]
-        version_bytes = "0488ade4"
+        #version_bytes = "0488ade4"
         depth = '00'  # master
         parent_fingerpint = '00000000'  # hex
         child_number = '00000000'  # hex
@@ -333,7 +333,6 @@ class TurtleWallet:
         hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
         hash2 = hashlib.sha256(hash1).hexdigest()
         checksum = hash2[:8]
-        print("len private extended", len(extended))
 
         b58encoded_ext_private_key= base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
         return b58encoded_ext_private_key
@@ -347,11 +346,7 @@ class TurtleWallet:
         public_key = public_key
 
         extended = version_bytes + depth + parent_fingerprint + child_number + chain_code + public_key
-        print('len public extended', len(extended))
-        print("aaaaaaaaaaaa")
-        print(base58.b58encode(bytes.fromhex(version_bytes)).decode('utf-8'))
-        print('aaaaaaaaaaaa')
-        hash1 = hashlib.sha256(bytes.fromhex("0488ade4")).digest()
+        hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
         hash2 = hashlib.sha256(hash1).hexdigest()
         checksum = hash2[:8]
 
