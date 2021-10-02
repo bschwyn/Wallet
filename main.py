@@ -196,46 +196,7 @@ class TurtleWallet:
 
     # * * * key generation from seed or key * * *
 
-    def uncompressed_public_key(self, private_key):
-        #uncompressed key
-        #convert hex to int
-        private_key = int(private_key,16)
-
-        # curve configuration
-        mod = pow(2, 256) - pow(2, 32) - pow(2, 9) - pow(2, 8) - pow(2, 7) - pow(2, 6) - pow(2, 4) - pow(2, 0)
-        order = 115792089237316195423570985008687907852837564279074904382605163141518161494337
-
-        # curve configuration
-        # y^2 = x^3 + a*x + b = x^3 + 7
-        a = 0
-        b = 7
-
-        # base point on the curve
-        x0 = 55066263022277343669578718895168534326250603453777594175500187360389116729240
-        y0 = 32670510020758816978083085130507043184471273380659243275938904335757337482424
-
-        #initial configuration
-        # print("Curve: y^2 = x^3 + ", a, "*x + ", b)
-        # print("Base point: (", x0, ", ", y0, ")\n")
-        #print("modulo: ", mod)
-        # print("order of group: ", order)
-
-        # print("private key: ", privateKey)
-       # print("private key (hex): ", hex(private_key)[2:], " (keep this secret!)\n")
-
-        ecdsa = EllipticCurveMath()
-
-        public_key = ecdsa.applyDoubleAndAddMethod(x0, y0, private_key, a, b, mod)
-        # print("public key: ", publicKey)
-
-        prefix = "04"
-        public_key_hex = prefix + hex(public_key[0])[2:] + hex(public_key[1])[2:]
-        #print("public key (hex): ", public_key_hex)
-
-        return public_key_hex
-
-    def compressed_public_key(self, private_key):
-        # compressed key (only x coordinate w/ 02 if y is positive, 03 if y is negative
+    def public_key_pair(self, private_key):
         # convert hex to int
         private_key = int(private_key, 16)
 
@@ -257,29 +218,48 @@ class TurtleWallet:
         # print("Base point: (", x0, ", ", y0, ")\n")
         # print("modulo: ", mod)
         # print("order of group: ", order)
-        ecdsa = EllipticCurveMath()
-        public_key = ecdsa.applyDoubleAndAddMethod(x0, y0, private_key, a, b, mod)
 
-        prefix = "02" if public_key[1] > 0 else "03"
+        # print("private key: ", privateKey)
+        # print("private key (hex): ", hex(private_key)[2:], " (keep this secret!)\n")
+
+        ecdsa = EllipticCurveMath()
+
+        public_key = ecdsa.applyDoubleAndAddMethod(x0, y0, private_key, a, b, mod)
+        return public_key
+
+    def uncompressed_public_key(self, private_key):
+        public_key = self.public_key_pair(private_key)
+        prefix = "04"
+        x = hex(public_key[0])[2:].zfill(64)
+        y = hex(public_key[1])[2:].zfill(64)
+        public_key_hex = prefix + x + y
+        return public_key_hex
+
+    def compressed_public_key(self, private_key):
+        public_key = self.public_key_pair(private_key)
+        prefix = "02" if public_key[1] % 2 == 0 else "03"
         compressed_public_key_hex = prefix + hex(public_key[0])[2:]
         return compressed_public_key_hex
 
-    def generate_key_and_code(self, seed):
+    def master_private_key_and_chain_code(self, seed):
         hash_bytes = hmac.new(b"Bitcoin seed", bytes.fromhex(seed), hashlib.sha512).digest()
-        left = hash_bytes[:32]  # 32 since hmac returns bytes
-        right = hash_bytes[32:]
-        key = left.hex()
-        chain_code = right.hex()
+        left, right = hash_bytes[:32], hash_bytes[32:]
+        key, chain_code = left.hex(), right.hex()
         return key, chain_code
 
+    def child_private_key_and_chain_code(self, parent_private_key, parent_chain_code, index):
+        index = self.int_to_8bit_hex(index)
+        data = "00" + parent_private_key + index
+        hash_bytes = hmac.new(bytes.fromhex(parent_chain_code), bytes.fromhex(data), hashlib.sha512).digest()
+        left, right = hash_bytes[:32], hash_bytes[32:]
+        child_key, new_chain_code = left.hex(), right.hex()
+        return child_key, new_chain_code
+
+
     def generate_master_keys_and_codes(self, master_seed):
-        master_private_key, master_chain_code = self.generate_key_and_code(master_seed)
+        master_private_key, master_chain_code = self.master_private_key_and_chain_code(master_seed)
         master_public_key = self.uncompressed_public_key(master_private_key) ### maybe change this so it accepts hex strings, rather than integers
         return master_private_key, master_public_key, master_chain_code
-
-    def generate_master_private_key_and_chain_code(self, master_seed):
-        master_private_key, master_chain_code = self.generate_key_and_code(master_seed)
-        return master_private_key, master_chain_code
 
     def bip32_key_fingerprint(self, key):
         #should be private key???? why?
@@ -342,6 +322,7 @@ class TurtleWallet:
                    'private test': '04358394'}
 
         version_bytes = version[network]
+        version_bytes = "0488ade4"
         depth = '00'  # master
         parent_fingerpint = '00000000'  # hex
         child_number = '00000000'  # hex
@@ -352,12 +333,13 @@ class TurtleWallet:
         hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
         hash2 = hashlib.sha256(hash1).hexdigest()
         checksum = hash2[:8]
+        print("len private extended", len(extended))
 
         b58encoded_ext_private_key= base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
         return b58encoded_ext_private_key
 
     def extended_master_public_key(self, public_key, chain_code):
-        version_bytes = '043587CF'  # public testnet
+        version_bytes = '0488b21e'  # public main
         depth = '00'  # for master, 1 for level-1 derived...
         parent_fingerprint = '00000000'
         child_number = '00000000'
@@ -365,8 +347,11 @@ class TurtleWallet:
         public_key = public_key
 
         extended = version_bytes + depth + parent_fingerprint + child_number + chain_code + public_key
-
-        hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
+        print('len public extended', len(extended))
+        print("aaaaaaaaaaaa")
+        print(base58.b58encode(bytes.fromhex(version_bytes)).decode('utf-8'))
+        print('aaaaaaaaaaaa')
+        hash1 = hashlib.sha256(bytes.fromhex("0488ade4")).digest()
         hash2 = hashlib.sha256(hash1).hexdigest()
         checksum = hash2[:8]
 
@@ -377,12 +362,16 @@ class TurtleWallet:
 
     # * * * child generation * * *
 
-
-    def child_private_key_from_parent_private_key(self, index, parent_private_key, parent_chain_code):
-        index = hex(index)[2:]
-        index = index.zfill(8)
+    def child_private_key_from_parent_private_key1(self, index, parent_private_key, parent_chain_code):
+        index = self.int_to_8bit_hex(index)
         seed = parent_private_key + parent_chain_code + index
-        private_child_key, chain_code = self.generate_key_and_code(seed) #hmac and split
+        private_child_key, chain_code = self.private_key_and_chain_code(seed) #hmac and split
+        return private_child_key, chain_code
+
+    def child_private_key_from_parent_private_key2(self, index, parent_private_key, parent_chain_code):
+        index = self.int_to_8bit_hex(index)
+        seed = parent_private_key + parent_chain_code + index
+        private_child_key, chain_code = self.private_key_and_code(seed) #hmac and split
         order = 115792089237316195423570985008687907852837564279074904382605163141518161494337
         private_child_key = int(private_child_key,16) + int(parent_private_key,16) % order
         private_child_key = hex(private_child_key)[2:]
@@ -390,11 +379,10 @@ class TurtleWallet:
 
     def child_public_key_from_parent_public_key(self, index, parent_public_key, parent_chain_code):
         # convert index from int to 32 bits of hex
-        index = hex(index)[2:]
-        index = index.zfill(8)
+        index = self.int_to_8bit_hex(index)
         seed = parent_public_key + parent_chain_code + index
         print(len(parent_public_key), len(parent_chain_code), len(index))
-        public_child_key, chain_code = self.generate_key_and_code(seed)
+        public_child_key, chain_code = self.private_key_and_chain_code(seed)
         public_child_key = public_child_key + parent_public_key
         return public_child_key, chain_code
 
@@ -411,7 +399,6 @@ class TurtleWallet:
         #strip hex "04" prefix from the beginning of public key
         public_key = public_key[2:]
         k = keccak.new(digest_bits=256)
-        print('generating address from: ', public_key)
         public_key_string = str(public_key)
         k.update(bytes.fromhex(public_key_string))
         hashed_key = k.hexdigest()
