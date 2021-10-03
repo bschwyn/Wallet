@@ -91,48 +91,48 @@ class TestStringMethods(unittest.TestCase):
 
     def test_parent_fingerprint(self):
         a = TurtleWallet("test")
-        seed = "000102030405060708090a0b0c0d0e0f"
+        seed = "fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542"
         private_key, chain_code = a.master_private_key_and_chain_code(seed)
-        fingerprint = a.bip32_key_fingerprint(private_key)
-        expected_fingerprint = "3442193e"
+        public_key = a.compressed_public_key(private_key)
+        #Chain m, test vector
+        expected_ext_priv = "xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U"
+        actual_ext_priv = a.extended_master_private_key(private_key, chain_code, 'private main')
+        self.assertEqual(expected_ext_priv, actual_ext_priv)
+
+        fingerprint = a.fingerprint(public_key)
+        #chain m/0 test vector 2
+        # xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih2yJD9mkrocEZXo1ex8G81dwSM1fwqWpWkeS3v86pgKt
+        # 0488ade4 01 bd16bee5 00000000 f0909affaa7ee7abe5dd4e100598d4dc53cd709d5a5c2cac40e7412f232f7c9c 00abe74a98f6c7eabee0428f53798f0ab8aa1bd37873999041703c742f15ac7e1e 17668a0b
+        expected_fingerprint = "bd16bee5"
         self.assertEqual(expected_fingerprint, fingerprint)
-        #I know from other tests that the public/private keys chain-m are good for this, and also
-        #extended public keys
-
-        #working backwards from chain m/O-h extended private key
-        # b58: xprv9uHRZZhk6KAJC1avXpDAp4MDc3sQKNxDiPvvkX8Br5ngLNv1TxvUxt4cV1rGL5hj6KCesnDYUhd7oWgT11eZG7XnxHrnYeSvkzY7d2bhkJ7
-        # hex: 0488ade4013442193e8000000047fdacbd0f1097043b78c63c20c34ef4ed9a111d980047ad16282c7ae623614100edb2e14f9ee77d26dd93b4ecede8d16ed408ce149b6cd80b0715a2d911a0afea0a794dec
-        # split into portions
-        #     0488ade4 01 3442193e 80000000 47fdacbd0f1097043b78c63c20c34ef4ed9a111d980047ad16282c7ae6236141 00 edb2e14f9ee77d26dd93b4ecede8d16ed408ce149b6cd80b0715a2d911a0afea 0a794dec
-        # fingerprint of parent key is 3442193e
-
 
 
     def test_extended_m_0(self):
         #https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
         a = TurtleWallet("test")
-        seed = "000102030405060708090a0b0c0d0e0f"
+        seed = "fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542"
         #master keys, "chain m"
         private_key, chain_code = a.master_private_key_and_chain_code(seed)
         public_key = a.compressed_public_key(private_key)
-        expected_ext_priv = "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
-        expected_ext_pub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
+        expected_ext_priv = "xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U"
+        expected_ext_pub = "xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB"
         actual_ext_priv = a.extended_master_private_key(private_key, chain_code, 'private main')
         actual_ext_pub = a.extended_master_public_key(public_key, chain_code)
         self.assertEqual(expected_ext_priv, actual_ext_priv)
-        #self.assertEqual(expected_ext_pub, actual_ext_pub)
+        self.assertEqual(expected_ext_pub, actual_ext_pub)
 
-        #first child "m0"so glad I didn't box, it has a concussion rate of 10-15% percent chance every time you get in the ring] I'
+        #first child "m0"
         # backwards parsing the m/0h key from test vector chain m/0_h, going from the extended private key to the hex with https://www.better-converter.com/Encoders-Decoders/Base58Check-to-Hexadecimal-Decoder
-        # b58: xprv9uHRZZhk6KAJC1avXpDAp4MDc3sQKNxDiPvvkX8Br5ngLNv1TxvUxt4cV1rGL5hj6KCesnDYUhd7oWgT11eZG7XnxHrnYeSvkzY7d2bhkJ7
-        # hex: 0488ade4013442193e8000000047fdacbd0f1097043b78c63c20c34ef4ed9a111d980047ad16282c7ae623614100edb2e14f9ee77d26dd93b4ecede8d16ed408ce149b6cd80b0715a2d911a0afea0a794dec
-        # split into portions
-        #     0488ade4 01 3442193e 80000000 47fdacbd0f1097043b78c63c20c34ef4ed9a111d980047ad16282c7ae6236141 00 edb2e14f9ee77d26dd93b4ecede8d16ed408ce149b6cd80b0715a2d911a0afea 0a794dec
+        # xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih2yJD9mkrocEZXo1ex8G81dwSM1fwqWpWkeS3v86pgKt
+        # 0488ade4 01 bd16bee5 00000000 f0909affaa7ee7abe5dd4e100598d4dc53cd709d5a5c2cac40e7412f232f7c9c 00abe74a98f6c7eabee0428f53798f0ab8aa1bd37873999041703c742f15ac7e1e 17668a0b
+
         child_private_key, child_chain_code = a.child_private_key_and_chain_code(private_key, chain_code, 0)
-        expected_child_chain_code = "47fdacbd0f1097043b78c63c20c34ef4ed9a111d980047ad16282c7ae6236141"
+        expected_child_chain_code = "f0909affaa7ee7abe5dd4e100598d4dc53cd709d5a5c2cac40e7412f232f7c9c"
         expected_child_key = "edb2e14f9ee77d26dd93b4ecede8d16ed408ce149b6cd80b0715a2d911a0afea"
-        #self.assertEqual(child_chain_code, expected_child_chain_code)
-        self.assertEqual(child_private_key, expected_child_key)
+        expected_child_extended_public_key = "xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7ERfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH"
+
+        print(child_private_key)
+        print(child_chain_code)
 
 
     def test_child_keys(self):

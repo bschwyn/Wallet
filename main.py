@@ -247,27 +247,15 @@ class TurtleWallet:
         key, chain_code = left.hex(), right.hex()
         return key, chain_code
 
-    def child_private_key_and_chain_code(self, parent_private_key, parent_chain_code, index):
-        index = self.int_to_8bit_hex(index)
-        data = "00" + parent_private_key + index
-        hash_bytes = hmac.new(bytes.fromhex(parent_chain_code), bytes.fromhex(data), hashlib.sha512).digest()
-        left, right = hash_bytes[:32], hash_bytes[32:]
-        child_key, new_chain_code = left.hex(), right.hex()
-        return child_key, new_chain_code
-
-
     def generate_master_keys_and_codes(self, master_seed):
         master_private_key, master_chain_code = self.master_private_key_and_chain_code(master_seed)
         master_public_key = self.uncompressed_public_key(master_private_key) ### maybe change this so it accepts hex strings, rather than integers
         return master_private_key, master_public_key, master_chain_code
 
-    def bip32_key_fingerprint(self, key):
-        #should be private key???? why?
-        #do I need to test that the key is private and not public?
-        #ripemd160(sha256(parentpriv)) / hash160(parenpriv)
-        hash1 = hashlib.sha256(bytes.fromhex(key)).digest()
-        hash2 = hashlib.new('ripemd160', hash1)
-        return hash2.hexdigest()[:8]
+    def fingerprint(self, public_key):
+        hash1 = hashlib.sha256(bytes.fromhex(public_key)).digest()
+        hash2 = hashlib.new('ripemd160', hash1).hexdigest()
+        return hash2[:8]
 
     def int_to_8bit_hex(self, val):
         val = hex(val)[2:]
@@ -314,6 +302,15 @@ class TurtleWallet:
         return self.extended_key(network="public main", depth=0, index=0, key=public_key, parent=None, chain_code=chain_code)
 
     # * * * child generation * * *
+
+
+    def child_private_key_and_chain_code(self, parent_private_key, parent_chain_code, index):
+        index = self.int_to_8bit_hex(index)
+        data = "00" + parent_private_key + index
+        hash_bytes = hmac.new(bytes.fromhex(parent_chain_code), bytes.fromhex(data), hashlib.sha512).digest()
+        left, right = hash_bytes[:32], hash_bytes[32:]
+        child_key, new_chain_code = left.hex(), right.hex()
+        return child_key, new_chain_code
 
     def child_private_key_from_parent_private_key1(self, index, parent_private_key, parent_chain_code):
         index = self.int_to_8bit_hex(index)
