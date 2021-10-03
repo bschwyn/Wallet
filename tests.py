@@ -107,11 +107,12 @@ class TestStringMethods(unittest.TestCase):
         self.assertEqual(expected_fingerprint, fingerprint)
 
 
-    def test_extended_m_0(self):
-        #https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+    def test_extended_m(self):
+        # https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
         a = TurtleWallet("test")
         seed = "fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542"
-        #master keys, "chain m"
+
+        # master keys, "chain m"
         private_key, chain_code = a.master_private_key_and_chain_code(seed)
         public_key = a.compressed_public_key(private_key)
         expected_ext_priv = "xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U"
@@ -121,19 +122,40 @@ class TestStringMethods(unittest.TestCase):
         self.assertEqual(expected_ext_priv, actual_ext_priv)
         self.assertEqual(expected_ext_pub, actual_ext_pub)
 
-        #first child "m0"
-        # backwards parsing the m/0h key from test vector chain m/0_h, going from the extended private key to the hex with https://www.better-converter.com/Encoders-Decoders/Base58Check-to-Hexadecimal-Decoder
-        # xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih2yJD9mkrocEZXo1ex8G81dwSM1fwqWpWkeS3v86pgKt
-        # 0488ade4 01 bd16bee5 00000000 f0909affaa7ee7abe5dd4e100598d4dc53cd709d5a5c2cac40e7412f232f7c9c 00abe74a98f6c7eabee0428f53798f0ab8aa1bd37873999041703c742f15ac7e1e 17668a0b
 
-        child_private_key, child_chain_code = a.child_private_key_and_chain_code(private_key, chain_code, 0)
-        expected_child_chain_code = "f0909affaa7ee7abe5dd4e100598d4dc53cd709d5a5c2cac40e7412f232f7c9c"
-        expected_child_key = "edb2e14f9ee77d26dd93b4ecede8d16ed408ce149b6cd80b0715a2d911a0afea"
-        expected_child_extended_public_key = "xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7ERfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH"
+    # def test_extended_m_0_child_chain_code_hardened(self):
+    #     #https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+    #
+    #     a = TurtleWallet("test")
+    #     seed = "fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542"
+    #
+    #     #master keys, "chain m"
+    #     private_key, chain_code = a.master_private_key_and_chain_code(seed)
+    #     child_private_key, child_chain_code = a.private_parent_key_to_private_child_key(private_key, chain_code, 0)
+    #     expected_child_chain_code = "f0909affaa7ee7abe5dd4e100598d4dc53cd709d5a5c2cac40e7412f232f7c9c"
+    #     self.assertEqual(child_chain_code, expected_child_chain_code)
+    #
+    #     # xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih2yJD9mkrocEZXo1ex8G81dwSM1fwqWpWkeS3v86pgKt
+    #     # 0488ade4 01 bd16bee5 00000000 f0909affaa7ee7abe5dd4e100598d4dc53cd709d5a5c2cac40e7412f232f7c9c 00abe74a98f6c7eabee0428f53798f0ab8aa1bd37873999041703c742f15ac7e1e 17668a0b
+    #     # 0488b21e 01 bd16bee5 00000000 f0909affaa7ee7abe5dd4e100598d4dc53cd709d5a5c2cac40e7412f232f7c9c 02fc9e5af0ac8d9b3cecfe2a888e2117ba3d089d8585886c9c826b6b22a98d12ea 44183bfc
+    #
+    #     #error sources --- seems easiest to make sure that I have the child chain code first:
+    #     #HMAC-SHA512   I = hmac.new(unhexlify(self.chain_code),msg=unhexlify(data),digestmod=sha512).digest()
+    #     #         I_L, I_R = I[:32], I[32:]
 
-        print(child_private_key)
-        print(child_chain_code)
+    def test_extended_m_0_child_chain_code(self):
+        # not hardened
 
+        a = TurtleWallet("test")
+        seed = "000102030405060708090a0b0c0d0e0f"
+
+        #master keys, "chain m"
+        private_key, chain_code = a.master_private_key_and_chain_code(seed)
+        child_private_key, child_chain_code = a.private_parent_key_to_private_child_key(private_key, chain_code, pow(2,31))
+        expected_child_chain_code = "47fdacbd0f1097043b78c63c20c34ef4ed9a111d980047ad16282c7ae6236141"
+        self.assertEqual(child_chain_code, expected_child_chain_code)
+
+        # 0488ade4 01 3442193e 80000000 47fdacbd0f1097043b78c63c20c34ef4ed9a111d980047ad16282c7ae6236141 00edb2e14f9ee77d26dd93b4ecede8d16ed408ce149b6cd80b0715a2d911a0afea 0a794dec
 
     def test_child_keys(self):
         pass

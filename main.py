@@ -296,12 +296,36 @@ class TurtleWallet:
 
     def extended_master_public_key(self, public_key, chain_code):
         #public key needs to be compressed
-        print(public_key)
         if (public_key[:2] != "02") and (public_key[:2] != "03"):
             raise ValueError
         return self.extended_key(network="public main", depth=0, index=0, key=public_key, parent=None, chain_code=chain_code)
 
     # * * * child generation * * *
+
+    def private_parent_key_to_private_child_key(self, parent_private_key, chain_code, index):
+        public_key = ""
+        hardened = False
+        if index >= pow(2,31):
+            hardened = True
+        index = hex(index)[2:].zfill(8)
+
+        if hardened:
+            data = "00" + parent_private_key + index
+        else:
+            data = public_key + index
+
+        hash_bytes = hmac.new(bytes.fromhex(chain_code), bytes.fromhex(data), hashlib.sha512).digest()
+        left, right = hash_bytes[:32], hash_bytes[32:]
+        child_key, new_chain_code = left.hex(), right.hex()
+        return child_key, new_chain_code
+
+
+
+    def public_parent_key_to_public_child_key(self):
+        pass
+
+    def private_parent_key_to_public_child_key(self):
+        pass
 
 
     def child_private_key_and_chain_code(self, parent_private_key, parent_chain_code, index):
@@ -331,7 +355,6 @@ class TurtleWallet:
         # convert index from int to 32 bits of hex
         index = self.int_to_8bit_hex(index)
         seed = parent_public_key + parent_chain_code + index
-        print(len(parent_public_key), len(parent_chain_code), len(index))
         public_child_key, chain_code = self.private_key_and_chain_code(seed)
         public_child_key = public_child_key + parent_public_key
         return public_child_key, chain_code
