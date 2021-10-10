@@ -303,7 +303,15 @@ class TurtleWallet:
     # * * * child generation * * *
 
     def private_parent_key_to_private_child_key(self, parent_private_key, chain_code, index):
-        public_key = ""
+        """
+        check whether i >= 2^31
+            if so return I=HMAC-SHA512(Key=c_par, Data = 0x00 || ser_256(k_par) || ser_32(i)
+            else I=HMAC-SHA512(key=c_par, Data=ser_p(point(k_par)) || ser_32(i))
+        split I into two 32-bytes sequeces I_L and I_R
+        the reutrned child key k_i is parse_256(I_L) + k_par(mod n)
+        the returned child chain code is I_R
+        if parse_256(I_L) >=n or k_i = 0, key is invalid
+        """
         hardened = False
         if index >= pow(2,31):
             hardened = True
@@ -312,17 +320,41 @@ class TurtleWallet:
         if hardened:
             data = "00" + parent_private_key + index
         else:
+            public_key = self.compressed_public_key(parent_private_key)
             data = public_key + index
 
         hash_bytes = hmac.new(bytes.fromhex(chain_code), bytes.fromhex(data), hashlib.sha512).digest()
         left, right = hash_bytes[:32], hash_bytes[32:]
-        child_key, new_chain_code = left.hex(), right.hex()
-        return child_key, new_chain_code
 
+        order = 115792089237316195423570985008687907852837564279074904382605163141518161494337
+        child_private_key = int(left.hex(), 16) + int(parent_private_key,16) % order
+        if child_private_key == 0 or int(left.hex(), 16) >= order:
+            raise Error
+        child_private_key_hex = hex(child_private_key)[2:]
+        new_chain_code = right.hex()
+        return child_private_key_hex, new_chain_code
 
+    def public_parent_key_to_public_child_key(self, parent_public_key, chain_code, index):
+        """
+        check whether i >= 2^31
+        if so return failure
+        else I=HMAC-SHA512(key=c_par, data=ser_p(K_par) ||ser_32(i))
+        split I into 2 32 byte sequences I_L and I_R
+        the returned child key K_i is point(parse_256(I_L)) + K_par
+        c_i = I_R
+        """
+        hardened = False
+        if index >= pow(2,31):
+            hardened = True
+        index = hex(index)[2:].zfill(8)
+        if hardened:
+            raise Error
+        data = parent_public_key + index
+        hash_bytes = hmac.new(bytes.fromhex(chain_code), bytes.fromhex(data), hashlib.sha512).digest()
 
-    def public_parent_key_to_public_child_key(self):
-        pass
+        left, right = hash_bytes[:32], hash_bytes[32:]
+        child_public_key = left.hex()
+
 
     def private_parent_key_to_public_child_key(self):
         pass
@@ -412,6 +444,21 @@ class TurtleWallet:
     def wait_for_transaction(self, tx_hash):
         receipt = self.connection.eth.wait_for_transaction_receipt(tx_hash)  # timeout here
         print(receipt)
+
+    # * * * utils * * *
+    def parse_extended_key(self, extended_key):
+        #base58check
+        extended_key = base58.b58decode(extended_key).hex()
+        network = extended_key[:8]
+        depth = extended_key[8:10]
+        fingerprint = extended_key[10:18]
+        child_number = extended_key[18:26]
+        chain_code = extended_key[26:90]
+        key = extended_key[90:156]
+        if key[:2] == "00":
+            key = key[2:]
+        check = extended_key[156:]
+        return network, depth, fingerprint, chain_code, key, check
 
 
 def new_wallet(name):
