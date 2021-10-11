@@ -169,7 +169,7 @@ class TestStringMethods(unittest.TestCase):
         # 0488ade4 00 00000000 00000000 60499f801b896d83179a4374aeb7822aaeaceaa0db1f85ee3e904c4defbd9689 00 4b03d6fc340455b363f51020ad3ecca4f0850280cf436c70c727923f6db46c3e 61e16479
         expected_chain_code = "60499f801b896d83179a4374aeb7822aaeaceaa0db1f85ee3e904c4defbd9689"
         epxected_private_key = "4b03d6fc340455b363f51020ad3ecca4f0850280cf436c70c727923f6db46c3e"
-        _, _, _, expected_chain_code, expected_private_key, _ = a.parse_extended_key("xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U")
+        _, _, _, _, expected_chain_code, expected_private_key, _ = a.parse_extended_key("xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U")
         # check to see that the master keys/codes are correct
         self.assertEqual(expected_chain_code, chain_code)
         self.assertEqual(epxected_private_key, private_key)
@@ -183,6 +183,13 @@ class TestStringMethods(unittest.TestCase):
         # check to see that child keys/codes are correct
         self.assertEqual(child_chain_code, expected_child_chain_code)
         self.assertEqual(child_private_key, expected_child_private_key)
+
+    def test_neuter_key(self):
+        private_key = "xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih2yJD9mkrocEZXo1ex8G81dwSM1fwqWpWkeS3v86pgKt"
+        expected_public_key = "xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih2yJD9mkrocEZXo1ex8G81dwSM1fwqWpWkeS3v86pgKt"
+        a = TurtleWallet("test")
+        public_key = a.neuter_key(private_key)
+        self.assertEqual(private_key, expected_public_key)
 
     def test_private_parent_key_to_public_child_key_nonhardened(self):
         pass

@@ -458,7 +458,39 @@ class TurtleWallet:
         if key[:2] == "00":
             key = key[2:]
         check = extended_key[156:]
-        return network, depth, fingerprint, chain_code, key, check
+        return network, depth, fingerprint, child_number, chain_code, key, check
+
+    def version_bytes(self, network):
+        version = {'public main': '0488b21e',
+                   'private main': '0488ade4',
+                   'public test': '043587cf',
+                   'private test': '04358394'}
+        return version[network]
+
+    def network_from_bytes(self, version_bytes):
+        network = {"0488b21e": "public main",
+                   "0488ade4": "private main",
+                   "043587cf": "public test",
+                   "04358394": "private test"}
+        return network[version_bytes]
+
+    def neuter_key(self, extended_private_key):
+        private_network, depth, fingerprint, child_number, chain_code, key, check = self.parse_extended_key(extended_private_key)
+        network = self.network_from_bytes(private_network)
+        network = "public " + network.split()[1]
+        public_network = self.version_bytes(network)
+        if int(child_number, 16) >= pow(2,31):
+            raise Error
+        key = self.compressed_public_key(key)
+        extended = public_network + depth + fingerprint + child_number + chain_code + key
+
+        hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
+        hash2 = hashlib.sha256(hash1).hexdigest()
+        checksum = hash2[:8]
+
+        encoded_string = base58.b58encode(bytes.fromhex(extended + checksum)).decode('utf-8')
+        return encoded_string
+
 
 
 def new_wallet(name):
