@@ -262,7 +262,7 @@ class TurtleWallet:
         return val.zfill(8)
 
 
-    def extended_key(self, network, depth, index, key, parent, chain_code):
+    def extended_key(self, network, depth, index, key, parent_key, chain_code):
         version = {'public main': '0488b21e',
                    'private main': '0488ade4',
                    'public test': '043587cf',
@@ -279,9 +279,12 @@ class TurtleWallet:
         child_number = self.int_to_8bit_hex(index)
         chain_code = chain_code
         if "private" in network:
+            # this should definitely change...fingerprint should always be of public key
             key = '00' + key
+            parent_fingerprint = self.fingerprint(self.compressed_public_key(parent_key)) if parent_key else '00000000'
+        else:
+            parent_fingerprint = self.fingerprint(parent_key) if parent_key else '00000000'
 
-        parent_fingerprint = self.bip32_key_fingerprint(parent) if parent else '00000000'
         extended = version_bytes + depth + parent_fingerprint + child_number + chain_code + key
 
         hash1 = hashlib.sha256(bytes.fromhex(extended)).digest()
@@ -292,17 +295,17 @@ class TurtleWallet:
         return encoded_string
 
     def extended_master_private_key(self, private_key, chain_code, network):
-        return self.extended_key(network="private main", depth=0, index=0, key=private_key, parent=None, chain_code=chain_code)
+        return self.extended_key(network="private main", depth=0, index=0, key=private_key, parent_key=None, chain_code=chain_code)
 
     def extended_master_public_key(self, public_key, chain_code):
         #public key needs to be compressed
         if (public_key[:2] != "02") and (public_key[:2] != "03"):
             raise ValueError
-        return self.extended_key(network="public main", depth=0, index=0, key=public_key, parent=None, chain_code=chain_code)
+        return self.extended_key(network="public main", depth=0, index=0, key=public_key, parent_key=None, chain_code=chain_code)
 
     # * * * child generation * * *
 
-    def private_parent_key_to_private_child_key(self, parent_private_key, chain_code, index):
+    def private_parent_key_to_private_child_key(self, parent_private_key, parent_chain_code, child_index):
         """
         check whether i >= 2^31
             if so return I=HMAC-SHA512(Key=c_par, Data = 0x00 || ser_256(k_par) || ser_32(i)
@@ -313,17 +316,17 @@ class TurtleWallet:
         if parse_256(I_L) >=n or k_i = 0, key is invalid
         """
         hardened = False
-        if index >= pow(2,31):
+        if child_index >= pow(2,31):
             hardened = True
-        index = hex(index)[2:].zfill(8)
+        child_index = hex(child_index)[2:].zfill(8)
 
         if hardened:
-            data = "00" + parent_private_key + index
+            data = "00" + parent_private_key + child_index
         else:
             public_key = self.compressed_public_key(parent_private_key)
-            data = public_key + index
+            data = public_key + child_index
 
-        hash_bytes = hmac.new(bytes.fromhex(chain_code), bytes.fromhex(data), hashlib.sha512).digest()
+        hash_bytes = hmac.new(bytes.fromhex(parent_chain_code), bytes.fromhex(data), hashlib.sha512).digest()
         left, right = hash_bytes[:32], hash_bytes[32:]
 
         order = 115792089237316195423570985008687907852837564279074904382605163141518161494337
@@ -333,6 +336,19 @@ class TurtleWallet:
         child_private_key_hex = hex(child_private_key)[2:]
         new_chain_code = right.hex()
         return child_private_key_hex, new_chain_code
+
+    def private_parent_key_to_extended_private_child_key(self, parent_private_key, parent_chain_code, parent_index, parent_depth, child_index):
+        # I could probably modify this so that it doesn't require the parent private key and chain code, but
+        # relies just on the tree!
+        child_private_key, chain_code = self.private_parent_key_to_private_child_key(parent_private_key, parent_chain_code, child_index)
+        extended_key = self.extended_key("private main", parent_depth + 1, child_index, child_private_key, parent_private_key, chain_code)
+        return extended_key
+
+
+
+
+
+
 
     def public_parent_key_to_public_child_key(self, parent_public_key, chain_code, index):
         """

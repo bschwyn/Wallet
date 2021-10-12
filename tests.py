@@ -191,7 +191,40 @@ class TestStringMethods(unittest.TestCase):
         public_key = a.neuter_key(private_key)
         self.assertEqual(private_key, expected_public_key)
 
+
     def test_private_parent_key_to_public_child_key_nonhardened(self):
+        # Using the unhardened test vector #2 from https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+        a = TurtleWallet("test")
+        seed = "fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542"
+
+
+        # PATH 1 N(ckd_priv(parent_private_key))
+        # master keys, "chain m"
+        parent_private_key, parent_chain_code = a.master_private_key_and_chain_code(seed)
+        child_private_key, child_chain_code = a.private_parent_key_to_private_child_key(parent_private_key, parent_chain_code, 0)
+        expected_child_private_key = "abe74a98f6c7eabee0428f53798f0ab8aa1bd37873999041703c742f15ac7e1e"
+        self.assertEqual(child_private_key, expected_child_private_key) #ok
+
+        extended_child_private_key = a.private_parent_key_to_extended_private_child_key(parent_private_key, parent_chain_code, 0, 0, 0)
+        # 0488ade4 01 4ff08c40 00000000 f0909affaa7ee7abe5dd4e100598d4dc53cd709d5a5c2cac40e7412f232f7c9c 00abe74a98f6c7eabee0428f53798f0ab8aa1bd37873999041703c742f15ac7e1e adefd67a
+        # 0488ade4 01 bd16bee5 00000000 f0909affaa7ee7abe5dd4e100598d4dc53cd709d5a5c2cac40e7412f232f7c9c 00abe74a98f6c7eabee0428f53798f0ab8aa1bd37873999041703c742f15ac7e1e 17668a0b
+        expected_extended_child_private_key = "xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih2yJD9mkrocEZXo1ex8G81dwSM1fwqWpWkeS3v86pgKt"
+        self.assertEqual(extended_child_private_key, expected_extended_child_private_key)
+
+        extended_child_public_key = a.neuter_key(extended_child_private_key)
+        expected_extended_child_public_key = "xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7ERfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH"
+        self.assertEqual(extended_child_public_key, expected_extended_child_public_key)
+
+
+        # get expected values by parsing extended keys
+        # 0488ade4 00 00000000 00000000 60499f801b896d83179a4374aeb7822aaeaceaa0db1f85ee3e904c4defbd9689 00 4b03d6fc340455b363f51020ad3ecca4f0850280cf436c70c727923f6db46c3e 61e16479
+        #expected_chain_code = "60499f801b896d83179a4374aeb7822aaeaceaa0db1f85ee3e904c4defbd9689"
+        #epxected_private_key = "4b03d6fc340455b363f51020ad3ecca4f0850280cf436c70c727923f6db46c3e"
+        #_, _, _, _, expected_chain_code, expected_private_key, _ = a.parse_extended_key(
+        #    "xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U")
+        # check to see that the master keys/codes are correct
+        #self.assertEqual(expected_chain_code, chain_code)
+        #self.assertEqual(epxected_private_key, private_key)
         pass
 
 
