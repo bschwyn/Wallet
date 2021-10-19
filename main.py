@@ -75,6 +75,25 @@ address: derived from public key via hash, encoded in base58check
 Standards:
 - return values in hex when possible
 - hex as strings with no '0x' prefix, e.g. "deadbeef"
+- public keys possibilities:
+    - (int, int)
+    - (hex, hex)
+    - hexbytes, hexbytes
+    - uncompressed key
+    - compressed key
+    - extended key
+
+Public key class?
+Extended public key class is an instance of a public key class
+
+Private Key
+- int
+- hex
+- bytes
+- extended
+Extended Privkey is an instance of private key
+
+Everytime you call a value, specify what the format is?
 
 
 """
@@ -197,12 +216,15 @@ class TurtleWallet:
     # * * * key generation from seed or key * * *
 
     def public_key_pair(self, private_key):
+        #hex ----> int pair
+
         # convert hex to int
         private_key = int(private_key, 16)
 
-        # curve configuration
+        # curve confiKi is point(parse256(IL)) + Kpar.guration
         mod = pow(2, 256) - pow(2, 32) - pow(2, 9) - pow(2, 8) - pow(2, 7) - pow(2, 6) - pow(2, 4) - pow(2, 0)
-        order = 115792089237316195423570985008687907852837564279074904382605163141518161494337
+        #order = 115792089237316195423570985008687907852837564279074904382605163141518161494337 #look up where this comes from
+        order = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
 
         # curve configuration
         # y^2 = x^3 + a*x + b = x^3 + 7
@@ -227,13 +249,62 @@ class TurtleWallet:
         public_key = ecdsa.applyDoubleAndAddMethod(x0, y0, private_key, a, b, mod)
         return public_key
 
+
     def uncompressed_public_key(self, private_key):
-        public_key = self.public_key_pair(private_key)
+        public_key_pair = self.public_key_pair(private_key)
         prefix = "04"
-        x = hex(public_key[0])[2:].zfill(64)
-        y = hex(public_key[1])[2:].zfill(64)
+        x = hex(public_key_pair[0])[2:].zfill(64)
+        y = hex(public_key_pair[1])[2:].zfill(64)
         public_key_hex = prefix + x + y
         return public_key_hex
+
+    def decompress_pubkey(self, public_key):
+        # this seems ?somewhat? difficult to do...
+        # solve y^2 = x^3 + 7 for y...,
+        # https://bitcoin.stackexchange.com/questions/86234/how-to-uncompress-a-public-key
+        p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F #same as "Order". make this a constant?
+        prefix = public_key[:2]
+        x = int(public_key[2:66],16)
+        y_sq = (pow(x,3, p) + 7) % p
+        y = pow(y_sq, (p + 1) //4, p) #I don't understand this line. why (p+1)//4 instead 1//2?
+        if y % 2 != int(prefix) % 2: # don't understand this either (why) (note int("02",16) == int("02")
+            y = p-y  #or this
+        decompressed_key = "04" + hex(x)[2:].zfill(64) + hex(y)[2:].zfill(64)
+        return decompressed_key
+
+
+    def pubkey_to_pair(self, uncompressed_public_key):
+        # takes hex, returns int pair
+        x_y =  uncompressed_public_key[2:]
+        x = int(x_y[:64],16)
+        y = int(x_y[64:], 16)
+        return x, y
+
+
+    def compressed_pubkey_to_pair(self, pubkey):
+        decompressed = self.decompress_pubkey(pubkey)
+        x,y = self.public_key_pair(decompressed)
+        return x,y
+
+    def ECGroupOp(self, x1, y1, x2, y2):
+        # takes 2 public key pairs and "adds" them.
+        # curve configuration
+        mod = pow(2, 256) - pow(2, 32) - pow(2, 9) - pow(2, 8) - pow(2, 7) - pow(2, 6) - pow(2, 4) - pow(2, 0)
+        #order = 115792089237316195423570985008687907852837564279074904382605163141518161494337
+        # y^2 = x^3 + a*x + b = x^3 + 7
+        a = 0
+        b = 7
+        ecdsa = EllipticCurveMath()
+        x3, y3 = ecdsa.pointAddition(x1, y1, x2, y2, a, b, mod)
+        return x3, y3
+
+    def compress_pubkey(self, uncompressed_pubkey):
+        #takes hex
+        x = uncompressed_pubkey[2:66]
+        y = uncompressed_pubkey[66:]
+        prefix = "02" if int(y,16) % 2 == 0 else "03"
+        compressed_public_key_hex = prefix + x
+        return compressed_public_key_hex
 
     def compressed_public_key(self, private_key):
         public_key = self.public_key_pair(private_key)
@@ -344,13 +415,7 @@ class TurtleWallet:
         extended_key = self.extended_key("private main", parent_depth + 1, child_index, child_private_key, parent_private_key, chain_code)
         return extended_key
 
-
-
-
-
-
-
-    def public_parent_key_to_public_child_key(self, parent_public_key, chain_code, index):
+    def public_parent_key_to_public_child_key(self, compressed_parent_public_key, chain_code, index):
         """
         check whether i >= 2^31
         if so return failure
@@ -358,6 +423,7 @@ class TurtleWallet:
         split I into 2 32 byte sequences I_L and I_R
         the returned child key K_i is point(parse_256(I_L)) + K_par
         c_i = I_R
+        #assume compressed parent public key
         """
         hardened = False
         if index >= pow(2,31):
@@ -365,11 +431,22 @@ class TurtleWallet:
         index = hex(index)[2:].zfill(8)
         if hardened:
             raise Error
-        data = parent_public_key + index
+        data = compressed_parent_public_key + index
         hash_bytes = hmac.new(bytes.fromhex(chain_code), bytes.fromhex(data), hashlib.sha512).digest()
+        # hash bytes verified by comparison to other code
 
         left, right = hash_bytes[:32], hash_bytes[32:]
-        child_public_key = left.hex()
+
+        x1, y1 = self.public_key_pair(left.hex())
+
+        #_, _, _, _, _, compressed_parent_public_key, _ = self.parse_extended_key(extended_parent_public_key)
+        uncompressed_parent_public_key = self.decompress_pubkey(compressed_parent_public_key)
+        x2, y2 = self.pubkey_to_pair(uncompressed_parent_public_key)
+        x3, y3 = self.ECGroupOp(x1, y1, x2, y2)
+
+        # returns uncompressed key
+        child_public_key = "04" + hex(x3)[2:].zfill(64) + hex(y3)[2:].zfill(64)
+        return child_public_key
 
 
     def private_parent_key_to_public_child_key(self):

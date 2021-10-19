@@ -50,6 +50,9 @@ class TestStringMethods(unittest.TestCase):
         expected_public_key = expected_public_key.lower()
         self.assertEqual(public_key, expected_public_key)
 
+
+
+
     def test_master_extended_private(self):
         #  from https://en.bitcoin.it/wiki/BIP_0032
         a = TurtleWallet("test")
@@ -191,6 +194,70 @@ class TestStringMethods(unittest.TestCase):
         public_key = a.neuter_key(private_key)
         self.assertEqual(private_key, expected_public_key)
 
+    def test_compress_key(self):
+        a = TurtleWallet("test")
+        seed = "fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542"
+        private_key, chain_code = a.master_private_key_and_chain_code(seed)
+        uncompressed_pubkey = a.uncompressed_public_key(private_key) #ok
+        compressed_pubkey = a.compressed_public_key(private_key)
+        compressed_pubkey2 = a.compress_pubkey(uncompressed_pubkey)
+        self.assertEqual(compressed_pubkey, compressed_pubkey2)
+
+    def test_decompress_key(self):
+        a = TurtleWallet("test")
+        seed = "fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542"
+        private_key, chain_code = a.master_private_key_and_chain_code(seed)
+        uncompressed_pubkey = a.uncompressed_public_key(private_key) #ok
+        compressed_pubkey = a.compressed_public_key(private_key)
+        uncompressed_pubkey2 = a.decompress_pubkey(compressed_pubkey)
+        self.assertEqual(uncompressed_pubkey2, uncompressed_pubkey)
+
+    def test_pubkey_pair(self):
+        a = TurtleWallet('t')
+        x,y = a.pubkey_to_pair()
+
+    def test_compressed_public_key_to_pair(self):
+        a = TurtleWallet('t')
+        a.compressed_pubkey_to_pair()
+
+
+    def test_elliptic_curve_group_addition(self):
+        a = TurtleWallet("tst")
+        private_key_full = "1E99423A4ED27608A15A2616A2B0E9E52CED330AC530EDCC32C8FFC6A526AEDD"
+        private_key1 = "1E99423A4ED27608A15A26160000000000000000000000000000000000000000"
+        private_key2 = "A2B0E9E52CED330AC530EDCC32C8FFC6A526AEDD"
+        public_key1 = a.uncompressed_public_key(private_key1)
+        public_key2 = a.uncompressed_public_key(private_key2)
+        x1,y1 = a.pubkey_to_pair(public_key1)
+        x2,y2 = a.pubkey_to_pair(public_key2)
+        x3, y3 = a.ECGroupOp(x1, y1, x2, y2)
+
+        public_key_full = a.uncompressed_public_key(private_key_full)
+        xf,yf = a.pubkey_to_pair(public_key_full)
+        self.assertEqual(x3, xf)
+        self.assertEqual(y3, yf)
+
+
+
+
+    def test_nonharded_public_parent_to_public_child(self):
+        # get the child pubkey
+        # parent privkey --> parent_pubkey --> child_pubkey
+        # compare to expected_child_pubkey (parsed from test vector)
+        a = TurtleWallet("test")
+        seed = "fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542"
+        parent_private_key, parent_chain_code = a.master_private_key_and_chain_code(seed)
+        parent_pubkey = a.compressed_public_key(parent_private_key)
+        ext_parent_pubkey = a.extended_master_public_key(parent_pubkey, parent_chain_code)
+        expected_ext_parent_pubkey = "xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB"
+        self.assertEqual(ext_parent_pubkey, expected_ext_parent_pubkey) #ok
+
+        child_pubkey = a.public_parent_key_to_public_child_key(parent_pubkey, parent_chain_code,0)
+        # 0488b21e 01 bd16bee5 00000000 f0909affaa7ee7abe5dd4e100598d4dc53cd709d5a5c2cac40e7412f232f7c9c 02fc9e5af0ac8d9b3cecfe2a888e2117ba3d089d8585886c9c826b6b22a98d12ea 44183bfc
+        expected_child_pubkey = "02fc9e5af0ac8d9b3cecfe2a888e2117ba3d089d8585886c9c826b6b22a98d12ea"
+        self.assertEqual(child_pubkey, expected_child_pubkey)
+
+
 
     def test_private_parent_key_to_public_child_key_nonhardened(self):
         # Using the unhardened test vector #2 from https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
@@ -215,6 +282,16 @@ class TestStringMethods(unittest.TestCase):
         expected_extended_child_public_key = "xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7ERfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH"
         self.assertEqual(extended_child_public_key, expected_extended_child_public_key)
 
+        # Path 2
+        extended_parent_private_key = a.extended_master_private_key(parent_private_key, parent_chain_code, "private main")
+        extended_parent_public_key = a.neuter_key(extended_parent_private_key)
+        expected_extended_parent_public_key = "xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB"
+        self.assertEqual(extended_parent_public_key, expected_extended_parent_public_key)
+
+        _, _, _, _, parent_chain_code_again, parent_public_key_again, _ = a.parse_extended_key(extended_parent_public_key)
+
+        extended_child_public_key2 = a.public_parent_key_to_public_child_key(parent_public_key_again, parent_chain_code_again, 0)
+        self.assertEqual(extended_child_public_key2, expected_extended_child_public_key)
 
         # get expected values by parsing extended keys
         # 0488ade4 00 00000000 00000000 60499f801b896d83179a4374aeb7822aaeaceaa0db1f85ee3e904c4defbd9689 00 4b03d6fc340455b363f51020ad3ecca4f0850280cf436c70c727923f6db46c3e 61e16479
@@ -336,7 +413,7 @@ class TestStringMethods(unittest.TestCase):
     #     private_key = '6e82f0bf30100c06597ccb7edab90c8c8a02d03c80883466dfc97e5cb8b6cd4a'
     #     wallet = FrogWallet(from_address, private_key, "ganache")
     #
-    #     # send transaction
+    #     # send transactionhahaha I grew up near Silverwood. I heard the name Cork
     #     tx_hash = wallet.send_transaction(to_address="0x2C3658828031133dfDE4e7daEE709ed2709fCaB1",
     #                                       value=w3.toWei(1, "ether"))
     #     wallet.wait_for_transaction(tx_hash)
